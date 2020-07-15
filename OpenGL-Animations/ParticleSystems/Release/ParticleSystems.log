@@ -1,0 +1,44 @@
+﻿  ObjLoader.cpp
+  GLM: rotate function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: rotate_slow function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: perspective function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: perspectiveFov function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: infinitePerspective function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: tweakedInfinitePerspective function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: rotate function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: roll function returning degrees is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: pitch function returning degrees is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: yaw function returning degrees is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: angle function returning degrees is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  GLM: angleAxis function taking degrees as a parameter is deprecated. #define GLM_FORCE_RADIANS before including GLM headers to remove this message.
+  Fire.cpp
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\Fire.cpp(271,29): warning C4305: '=': truncation from 'double' to 'float'
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\Fire.cpp(273,34): warning C4305: '+=': truncation from 'double' to 'float'
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\Fire.cpp(402,23): warning C4018: '<': signed/unsigned mismatch
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\Fire.cpp(475,22): warning C4305: 'initializing': truncation from 'double' to 'float'
+  ParticleSystem.cpp
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(8,15): warning C4305: 'initializing': truncation from 'double' to 'float'
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(35,20): warning C4018: '<': signed/unsigned mismatch
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(40,19): warning C4305: '*=': truncation from 'double' to 'T'
+          with
+          [
+              T=float
+          ]
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(41,19): warning C4305: '*=': truncation from 'double' to 'T'
+          with
+          [
+              T=float
+          ]
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(72,18): warning C4018: '<': signed/unsigned mismatch
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(76,113): warning C4018: '<': signed/unsigned mismatch
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(99,20): warning C4018: '<': signed/unsigned mismatch
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(115,14): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(137,14): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(138,12): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+F:\OpenGL_Animations\OpenGL-Animations\ParticleSystems\Source\ParticleSystem.cpp(158,11): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+  Generating code
+  492 of 699 functions (70.4%) were compiled, the rest were copied from previous compilation.
+    4 functions were new in current compilation
+    3 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  ParticleSystems.vcxproj -> F:\OpenGL_Animations\OpenGL-Animations\Release\ParticleSystems.exe

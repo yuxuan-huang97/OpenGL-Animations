@@ -1,0 +1,6 @@
+﻿  Water.cpp
+F:\OpenGL_Animations\OpenGL_Animations\ParticleSystems\Source\Water.cpp(242,29): warning C4305: '=': truncation from 'double' to 'float'
+F:\OpenGL_Animations\OpenGL_Animations\ParticleSystems\Source\Water.cpp(244,34): warning C4305: '+=': truncation from 'double' to 'float'
+F:\OpenGL_Animations\OpenGL_Animations\ParticleSystems\Source\Water.cpp(361,23): warning C4018: '<': signed/unsigned mismatch
+F:\OpenGL_Animations\OpenGL_Animations\ParticleSystems\Source\Water.cpp(427,22): warning C4305: 'initializing': truncation from 'double' to 'float'
+  ParticleSystems.vcxproj -> F:\OpenGL_Animations\OpenGL_Animations\Debug\ParticleSystems.exe
