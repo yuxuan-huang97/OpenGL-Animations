@@ -45,42 +45,40 @@
 
 using namespace std;
 
-bool saveOutput = false; //Make to true to save out your animation
-int screen_width = 800;
-int screen_height = 600;
+int screen_width, screen_height;
+float aspect; //aspect ratio (needs to be updated if the window is resized)
+bool fullscreen;
+bool saveOutput; //Make to true to save out your animation
 
 // Shader sources
 const GLchar* vertexSource;
 const GLchar* fragmentSource;
 
-bool fullscreen = false;
+// Camera Spec
+glm::vec3 cam_loc, look_at, up;
+
+// particle system
+ParticleSystem fire;
+
+// sphere spec
+glm::vec3 sph_loc, sph_color, env_loc, env_color;
+float sph_rad;
+int sph_vert, env_vert; // number of vertices for sphere and environment
+
+//Index of where to model, view, and projection matricies are stored on the GPU
+GLint uniModel, uniView, uniProj, uniColor;
+
+void init();
 void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
+void computePhysics(float dt);
 void set_camera();
 void draw_particles(float dt);
 void draw_sphere(float dt);
 void draw_env(float dt);
 
-//Index of where to model, view, and projection matricies are stored on the GPU
-GLint uniModel, uniView, uniProj, uniColor;
-
-float aspect; //aspect ratio (needs to be updated if the window is resized)
-
-// Camera Spec
-glm::vec3 cam_loc(15.f, 15.f, 1.8f);
-glm::vec3 look_at(0.0f, 0.0f, 0.0f);
-glm::vec3 up(0.0f, 0.0f, 1.0f);
-
-// particle system
-ParticleSystem fire(7500, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
-
-// sphere and environment specs
-glm::vec3 sph_loc(0, 0, 0);
-glm::vec3 env_loc(0, 0, -3.5);
-float sph_rad = 1.5;
-int sph_vert;
-int env_vert;
-
 int main(int argc, char* argv[]) {
+
+    init();
 
     //======================= Initializations and Window Setup =================================
 
@@ -116,6 +114,8 @@ int main(int argc, char* argv[]) {
     }
 
     //============================ Shader Setup ======================================
+
+    init();
 
     //Load the default vertex Shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -190,15 +190,11 @@ int main(int argc, char* argv[]) {
     glEnableVertexAttribArray(posAttrib);
 
 
-    // Sphere Data
+    // Sphere and environment Data
     glBindVertexArray(vao_sph);
 
     GLuint vbo_sph[2];
     glGenBuffers(2, vbo_sph);  //Create 1 buffer called vbo
-
-
-    // Environment Data
-
 
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_sph[0]);
@@ -216,9 +212,6 @@ int main(int argc, char* argv[]) {
     GLint normalAttrib_1 = glGetAttribLocation(shaderProgram, "inNormal");
     glVertexAttribPointer(normalAttrib_1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
     glEnableVertexAttribArray(normalAttrib_1);
-
-
-
 
 
     glEnable(GL_DEPTH_TEST);
@@ -284,11 +277,24 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+void init() {
+    screen_width = 800;
+    screen_height = 600;
+    saveOutput = false;
+    fullscreen = false;
 
-void computePhysics(float dt) {
-    fire.update(dt, ParticleSystem::particle_type::smoke, sph_loc, sph_rad);
-    printf("Particle Count: %i \n", fire.Pos.size());
-}
+    cam_loc = glm::vec3(15.f, 15.f, 1.8f);
+    look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+    up = glm::vec3(0.0f, 0.0f, 1.0f);
+
+    fire = ParticleSystem(7500, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
+
+    sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
+    env_loc = glm::vec3(0.0f, 0.0f, -3.5f);
+    sph_rad = 1.5f;
+    sph_color = glm::vec3(1.0f, 1.0f, 1.0f);
+    env_color = glm::vec3(0.5f, 0.5f, 0.5f);
+};
 
 void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
 
@@ -317,16 +323,18 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
     computePhysics(dt);
 }
 
+void computePhysics(float dt) {
+    fire.update(dt, ParticleSystem::particle_type::smoke, sph_loc, sph_rad);
+    printf("Particle Count: %i \n", fire.Pos.size());
+}
+
 void set_camera() {
     //Set the Camera view paramters (FOV, aspect ratio, etc.)
     glm::mat4 proj = glm::perspective(3.14f / 4, aspect, .1f, 100.0f); //FOV, aspect, near, far
     glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 
     //Set the Camera Position and Orientation
-    glm::mat4 view = glm::lookAt(
-        cam_loc,  //Cam Position
-        look_at,  //Look at point
-        up); //Up
+    glm::mat4 view = glm::lookAt(cam_loc, look_at, up); // camera location, look at point, up direction
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 
     glPointSize(8.0f);
@@ -350,7 +358,7 @@ void draw_sphere(float dt) {
     model = glm::translate(model, sph_loc);
     model = glm::scale(model, glm::vec3(sph_rad));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);
+    glUniform3f(uniColor, sph_color.r, sph_color.g, sph_color.b);
     glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, starting index, Number of vertices)
 
 }
@@ -360,6 +368,6 @@ void draw_env(float dt) {
     model = glm::translate(model, env_loc);
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, 0.5f, 0.5f, 0.5f);
+    glUniform3f(uniColor, env_color.r, env_color.g, env_color.b);
     glDrawArrays(GL_TRIANGLES, sph_vert / 3, env_vert / 3); // the starting element is the first one after the sphere data
 }
