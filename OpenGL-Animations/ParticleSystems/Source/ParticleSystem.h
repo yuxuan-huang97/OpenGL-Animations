@@ -19,6 +19,8 @@ public:
 	vector<glm::vec3> Pos;
 	vector<glm::vec3> Clr;
 
+	ParticleSystem();
+
 	ParticleSystem(float gr, float ls, float lsptb, int mpc, glm::vec3 pos, float sr, axis n, float vel, float vptb, glm::vec3 col);
 
 	void update(float dt, particle_type t, glm::vec3 obs_loc, float obs_rad); // update in a fluid-like behavior
@@ -53,4 +55,3 @@ private:
 
 	void removeParticles(); // remove the dead particles per timestep
 };
-
