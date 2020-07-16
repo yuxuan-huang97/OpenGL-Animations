@@ -22,8 +22,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "ParticleSystem.h"
-#include "../../Tools/FileLoader.h"
 
 #include "../../../glad/glad.h"  //Include order can matter here
 #ifdef __APPLE__
@@ -40,18 +38,19 @@
 #include "../../../glm/gtc/matrix_transform.hpp"
 #include "../../../glm/gtc/type_ptr.hpp"
 
-#include <cstdio>
+#include "ParticleSystem.h"
+#include "../../Tools/FileLoader.h"
 #include "../../Tools/ExportTools.h"
+#include "../../Tools/UserControl.h"
+
 using namespace std;
 
 bool saveOutput = false; //Make to true to save out your animation
 int screen_width = 800;
 int screen_height = 600;
 
-
 // Shader sources
 const GLchar* vertexSource;
-
 const GLchar* fragmentSource;
 
 bool fullscreen = false;
@@ -60,12 +59,16 @@ void set_camera();
 void draw_particles(float dt);
 void draw_sphere(float dt);
 void draw_env(float dt);
-void handle_input(SDL_Event event);
 
 //Index of where to model, view, and projection matricies are stored on the GPU
 GLint uniModel, uniView, uniProj, uniColor;
 
 float aspect; //aspect ratio (needs to be updated if the window is resized)
+
+// Camera Spec
+glm::vec3 cam_loc(15.f, 15.f, 1.8f);
+glm::vec3 look_at(0.0f, 0.0f, 0.0f);
+glm::vec3 up(0.0f, 0.0f, 1.0f);
 
 // particle system
 ParticleSystem fire(7500, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
@@ -239,7 +242,7 @@ int main(int argc, char* argv[]) {
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_f) //If "f" is pressed
                 fullscreen = !fullscreen;
             SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
-            handle_input(windowEvent);
+            move_obj(windowEvent, sph_loc, look_at - cam_loc, up, 0.2);
         }
 
         // Clear the screen to default color
@@ -252,7 +255,7 @@ int main(int argc, char* argv[]) {
         if (saveOutput) dt += .07; //Fix framerate at 14 FPS
 
         update(dt, ptc_shaderProgram, shaderProgram, vao, vao_sph);
-        
+
         printf("FPS: %i \n", int(1 / dt));
 
         if (saveOutput) Win2PPM(screen_width, screen_height);
@@ -321,9 +324,9 @@ void set_camera() {
 
     //Set the Camera Position and Orientation
     glm::mat4 view = glm::lookAt(
-        glm::vec3(15.f, 15.f, 1.8f),  //Cam Position
-        glm::vec3(0.0f, 0.0f, 0.0f),  //Look at point
-        glm::vec3(0.0f, 0.0f, 1.0f)); //Up
+        cam_loc,  //Cam Position
+        look_at,  //Look at point
+        up); //Up
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 
     glPointSize(8.0f);
@@ -358,24 +361,5 @@ void draw_env(float dt) {
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
     glUniform3f(uniColor, 0.5f, 0.5f, 0.5f);
-    glDrawArrays(GL_TRIANGLES, sph_vert / 3, env_vert / 3); // note that the starting index is the first one after the sphere data
-}
-
-// User Control
-void handle_input(SDL_Event event) {
-    float speed = 0.2;
-    glm::vec3 translation;
-    if (event.type == SDL_KEYDOWN) {
-        switch (event.key.keysym.sym) {
-        case SDLK_UP: translation = glm::vec3(-1.0f, -1.0f, 0.0f); break;
-        case SDLK_DOWN: translation = glm::vec3(1.0f, 1.0f, 0.0f); break;
-        case SDLK_d: translation = glm::vec3(-1.0f, 1.0f, 0.0f); break;
-        case SDLK_a: translation = glm::vec3(1.0f, -1.0f, 0.0f); break;
-        case SDLK_w: translation = glm::vec3(0.0f, 0.0f, 1.414f); break;
-        case SDLK_s: translation = glm::vec3(0.0f, 0.0f, -1.414f); break;
-        default: break;
-        }
-    }
-    translation *= 0.2;
-    sph_loc += translation;
+    glDrawArrays(GL_TRIANGLES, sph_vert / 3, env_vert / 3); // the starting element is the first one after the sphere data
 }
