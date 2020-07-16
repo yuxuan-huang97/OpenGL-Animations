@@ -45,43 +45,41 @@
 
 using namespace std;
 
-bool saveOutput = false; //Make to true to save out your animation
-int screen_width = 800;
-int screen_height = 600;
-
+int screen_width, screen_height;
+float aspect; //aspect ratio (needs to be updated if the window is resized)
+bool fullscreen;
+bool saveOutput; //Make to true to save out your animation
 
 // Shader sources
 const GLchar* vertexSource;
-
 const GLchar* fragmentSource;
 
-bool fullscreen = false;
-void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
-void set_camera();
-void draw_particles(float dt);
-void draw_sphere(float dt);
+// Camera Spec
+glm::vec3 cam_loc, look_at, up;
+
+// particle system
+ParticleSystem water;
+
+// sphere spec
+glm::vec3 sph_loc, sph_color;
+float sph_rad;
+int sph_vert; // number of vertices for sphere
 
 //Index of where to model, view, and projection matricies are stored on the GPU
 GLint uniModel, uniView, uniProj, uniColor;
 
-float aspect; //aspect ratio (needs to be updated if the window is resized)
-
-// Camera Spec
-glm::vec3 cam_loc(20.f, 20.f, 1.8f);
-glm::vec3 look_at(0.0f, 0.0f, 0.0f);
-glm::vec3 up(0.0f, 0.0f, 1.0f);
-
-// particle system
-ParticleSystem water(5000, 3.0f, 0.0f, 150000, glm::vec3(0, 5, 5), 1.0f, axis::X, 10.0f, 10.0f, glm::vec3(0.4f, 0.9f, 1.0f));
-
-// sphere
-glm::vec3 sph_loc(0, 0, 0);
-float sph_rad = 1.0;
-int sph_vert;
+void init();
+void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
+void computePhysics(float dt);
+void set_camera();
+void draw_particles(float dt);
+void draw_sphere(float dt);
 
 int main(int argc, char* argv[]) {
 
     //======================= Initializations and Window Setup =================================
+
+    init();
 
     SDL_Init(SDL_INIT_VIDEO);  //Initialize Graphics (for OpenGL)
 
@@ -212,7 +210,6 @@ int main(int argc, char* argv[]) {
     glEnableVertexAttribArray(sph_normalAttrib);
 
 
-
     glEnable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
@@ -275,11 +272,22 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+void init() {
+    screen_width = 800;
+    screen_height = 600;
+    saveOutput = false;
+    fullscreen = false;
 
-void computePhysics(float dt) {
-    water.update(dt, ParticleSystem::particle_type::fluid, sph_loc, sph_rad);
-    printf("Particle Count: %i \n", water.Pos.size());
-}
+    cam_loc = glm::vec3(20.f, 20.f, 1.8f);
+    look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+    up = glm::vec3(0.0f, 0.0f, 1.0f);
+
+    water = ParticleSystem(5000, 3.0f, 0.0f, 150000, glm::vec3(0, 5, 5), 1.0f, axis::X, 10.0f, 10.0f, glm::vec3(0.4f, 0.9f, 1.0f));
+
+    sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
+    sph_rad = 1.0f;
+    sph_color = glm::vec3(1.0f, 0.0f, 0.0f);
+};
 
 void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
 
@@ -301,6 +309,11 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
     glBindVertexArray(vao2);
     draw_sphere(dt);
     computePhysics(dt);
+}
+
+void computePhysics(float dt) {
+    water.update(dt, ParticleSystem::particle_type::fluid, sph_loc, sph_rad);
+    printf("Particle Count: %i \n", water.Pos.size());
 }
 
 void set_camera() {
@@ -331,9 +344,8 @@ void draw_particles(float dt) {
 void draw_sphere(float dt) {
     glm::mat4 model = glm::mat4();
     model = glm::translate(model, sph_loc);
-    //cout << sph_rad << endl;
     model = glm::scale(model, glm::vec3(sph_rad));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
+    glUniform3f(uniColor, sph_color.r, sph_color.g, sph_color.b);
     glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, Which VBO, Number of vertices)
 }
