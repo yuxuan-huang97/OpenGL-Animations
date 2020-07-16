@@ -7,6 +7,26 @@
 
 float g = -9.8;
 
+ParticleSystem::ParticleSystem() { // default particle system
+
+	// initializing global parameters for particle system
+	genRate = 2500; // generation rate
+	lifespan = 2; //lifespan
+	lfspan_ptb = 0; //lifespan perturbation
+	max_ptc_ct = 20000; // maximum particle count
+	src_pos = glm::vec3(0.0f, 0.0f, 0.0f); // source position
+	src_radius = 1.0f; // source radius
+	src_normal = axis::Z; // source normal
+	ini_vel = 1.0f;  // initial velocity
+	vel_ptb = 0.0f; // velocity perturbation
+	ini_clr = glm::vec3(0.0f, 0.0f, 0.0f); // initial color
+
+	Pos.reserve(max_ptc_ct);
+	Vel.reserve(max_ptc_ct);
+	Life.reserve(max_ptc_ct);
+	Clr.reserve(max_ptc_ct);
+}
+
 ParticleSystem::ParticleSystem(float gr, float ls, float lsptb, int mpc, glm::vec3 pos, float sr, axis n, float vel, float vptb, glm::vec3 clr) {
 	// initializing global parameters for particle system
 	genRate = gr; // generation rate
