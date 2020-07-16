@@ -55,12 +55,11 @@ const GLchar* vertexSource;
 const GLchar* fragmentSource;
 
 bool fullscreen = false;
-void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2, GLint vao3);
+void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
 void set_camera();
 void draw_particles(float dt);
 void draw_sphere(float dt);
 void draw_env(float dt);
-//void loadShader(GLuint shaderID, const char* shaderpath);
 void handle_input(SDL_Event event);
 
 //Index of where to model, view, and projection matricies are stored on the GPU
@@ -159,14 +158,15 @@ int main(int argc, char* argv[]) {
     std::vector< float > normals;
     loadobj("../ParticleSystems/Assets/sphere.obj", vertices, uvs, normals);
     sph_vert = vertices.size();
+    loadobj("../ParticleSystems/Assets/stones.obj", vertices, uvs, normals); // append to the vector (does not matter since both objects are using the same format)
+    env_vert = vertices.size();
 
     //============================ Buffer Setup ======================================
 
     //Build a Vertex Array Object. This stores the VBO and attribute mappings in one object
     GLuint vao, vao_sph, vao_env;
     glGenVertexArrays(1, &vao); // VAO for particles
-    glGenVertexArrays(1, &vao_sph); // VAO for the sphere
-    glGenVertexArrays(1, &vao_env); // VAO for the environment
+    glGenVertexArrays(1, &vao_sph); // VAO for the sphere and stones
 
     glBindVertexArray(vao); //Bind the above created VAO to the current context
 
@@ -192,49 +192,27 @@ int main(int argc, char* argv[]) {
 
     GLuint vbo_sph[2];
     glGenBuffers(2, vbo_sph);  //Create 1 buffer called vbo
+
+
+    // Environment Data
+
+
+
     glBindBuffer(GL_ARRAY_BUFFER, vbo_sph[0]);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
     //Tell OpenGL how to set fragment shader input (for sphere)
-    GLint sph_posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(sph_posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
+    GLint posAttrib_1 = glGetAttribLocation(shaderProgram, "position");
+    glVertexAttribPointer(posAttrib_1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
     //Attribute, vals/attrib., type, normalized?, stride, offset
     //Binds to VBO current GL_ARRAY_BUFFER 
-    glEnableVertexAttribArray(sph_posAttrib);
+    glEnableVertexAttribArray(posAttrib_1);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_sph[1]);
     glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), &normals[0], GL_STATIC_DRAW);
 
-    GLint sph_normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
-    glVertexAttribPointer(sph_normalAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-    glEnableVertexAttribArray(sph_normalAttrib);
-
-
-    // Environment Data
-    vertices.clear();
-    uvs.clear();
-    normals.clear();
-    loadobj("../ParticleSystems/Assets/stones.obj", vertices, uvs, normals);
-    env_vert = vertices.size();
-
-    glBindVertexArray(vao_env);
-
-    GLuint vbo_env[2];
-    glGenBuffers(2, vbo_env);  //Create 1 buffer called vbo
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_env[0]);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
-    //Tell OpenGL how to set fragment shader input (for sphere)
-    GLint env_posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(env_posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-    //Attribute, vals/attrib., type, normalized?, stride, offset
-    //Binds to VBO current GL_ARRAY_BUFFER 
-    glEnableVertexAttribArray(env_posAttrib);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_env[1]);
-    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), &normals[0], GL_STATIC_DRAW);
-
-    GLint env_normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
-    glVertexAttribPointer(env_normalAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-    glEnableVertexAttribArray(env_normalAttrib);
+    GLint normalAttrib_1 = glGetAttribLocation(shaderProgram, "inNormal");
+    glVertexAttribPointer(normalAttrib_1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
+    glEnableVertexAttribArray(normalAttrib_1);
 
 
 
@@ -273,7 +251,7 @@ int main(int argc, char* argv[]) {
         lastTime = SDL_GetTicks() / 1000.f;
         if (saveOutput) dt += .07; //Fix framerate at 14 FPS
 
-        update(dt, ptc_shaderProgram, shaderProgram, vao, vao_sph, vao_env);
+        update(dt, ptc_shaderProgram, shaderProgram, vao, vao_sph);
         
         printf("FPS: %i \n", int(1 / dt));
 
@@ -309,7 +287,7 @@ void computePhysics(float dt) {
     printf("Particle Count: %i \n", fire.Pos.size());
 }
 
-void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2, GLint vao3) {
+void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
 
     set_camera();
     //Where to model, view, and projection matricies are stored on the GPU
@@ -330,7 +308,6 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2, GLin
     glBindVertexArray(vao2);
     draw_sphere(dt);
 
-    glBindVertexArray(vao3);
     draw_env(dt);
 
 
@@ -360,7 +337,7 @@ void draw_particles(float dt) {
         model = glm::scale(model, glm::vec3(1));
         glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
         glUniform3f(uniColor, fire.Clr[i].r, fire.Clr[i].g, fire.Clr[i].b);
-        glDrawArrays(GL_POINTS, 0, 1); //(Primitives, Which VBO, Number of vertices)
+        glDrawArrays(GL_POINTS, 0, 1); //(Primitives, starting index, Number of vertices)
     }
 
 }
@@ -371,7 +348,7 @@ void draw_sphere(float dt) {
     model = glm::scale(model, glm::vec3(sph_rad));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
     glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);
-    glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, Which VBO, Number of vertices)
+    glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, starting index, Number of vertices)
 
 }
 
@@ -381,7 +358,7 @@ void draw_env(float dt) {
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
     glUniform3f(uniColor, 0.5f, 0.5f, 0.5f);
-    glDrawArrays(GL_TRIANGLES, 0, env_vert / 3); //(Primitives, Which VBO, Number of vertices)
+    glDrawArrays(GL_TRIANGLES, sph_vert / 3, env_vert / 3); // note that the starting index is the first one after the sphere data
 }
 
 // User Control
