@@ -1,6 +1,6 @@
 //CSCI 5611 OpenGL Animation Tutorial 
 //A 1D bouncing ball
-//Modified by Yuxuan Huang into a particle-based interactive fire simulation
+//Modified by Yuxuan Huang into a particle-based firework simulation
 
 //Running on Mac OSX
 //  Download the SDL2 Framework from here: https://www.libsdl.org/download-2.0.php
@@ -57,24 +57,145 @@ const GLchar* fragmentSource;
 // Camera Spec
 glm::vec3 cam_loc, look_at, up;
 
-// particle system
-ParticleSystem fire;
-
-// sphere spec
-glm::vec3 sph_loc, sph_color, env_loc, env_color;
-float sph_rad;
-int sph_vert, env_vert; // number of vertices for sphere and environment
+// uvsphere and icosphere spec
+float sph_rad, ico_rad;
+int sph_vert, ico_vert; // number of vertices for sphere and environment
 
 //Index of where to model, view, and projection matricies are stored on the GPU
 GLint uniModel, uniView, uniProj, uniColor;
 
 void init();
-void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
+void update(float dt);
 void computePhysics(float dt);
 void set_camera();
 void draw_particles(float dt);
 void draw_sphere(float dt);
-void draw_env(float dt);
+void draw_ico(float dt);
+
+class firework {
+public:
+    glm::vec3 position;
+    int stage; // 0 for launch, 1 for explosion
+
+    vector<glm::vec3> sphere_loc; // sphere for larger particles
+    vector<glm::vec3> ico_loc; // icosphere for smaller particles (tails)
+    vector<glm::vec3> sphere_vel; // velocity of the spheres
+    vector<glm::vec3> sphere_col; // color of the spheres
+
+    vector<float> sphere_life; // life of the spheres
+    vector<float> sphere_life_ini; // initial life of the spheres (only used in the explosion stage)
+
+    firework() { // default firework
+        position = glm::vec3(0.0f, 0.0f, 0.0f);
+        stage = 0;
+        sphere_loc.push_back(position);
+        sphere_vel.push_back(glm::vec3(0.0f, 0.0f, 10.0f)); // straight up
+        sphere_col.push_back(glm::vec3(1.0f, 1.0f, 1.0f)); // white
+
+        expl_count = 50;
+        r_life = 1.2f;
+        p_life = 1.0f;
+        color_type = int(3 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+
+        sphere_life.push_back(r_life);
+    }
+
+    firework(glm::vec3 pos, float rlife, float plife, int explc) { // customized firework
+        position = pos;
+        stage = 0;
+        sphere_loc.push_back(position);
+        sphere_vel.push_back(glm::vec3(0.0f + noise(0.1f), 0.0f + noise(0.1f), 10.0f + noise(0.1f)));
+        sphere_col.push_back(glm::vec3(1.0f, 1.0f, 1.0f));
+
+        expl_count = explc;
+        r_life = rlife;
+        p_life = plife;
+        color_type = int(3 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+
+        sphere_life.push_back(rlife);
+    }
+
+    void update(float dt) {
+        for (int i = 0; i < sphere_loc.size(); i++) {
+            sphere_loc[i] += (sphere_vel[i] * dt);
+            sphere_vel[i].z += (g * dt);
+            sphere_life[i] -= dt;
+        }
+        // transition to explosion stage
+        if (stage == 0) {
+            if (sphere_life[0] <= 0) {
+                explode();
+            }
+        }
+    }
+
+private:
+    float g = -9.8f;
+    int expl_count; // number of particles generated in explosion
+    float r_life; // rocket life
+    float p_life; // particle life
+
+    int color_type;
+
+    // explosion creates a number of smaller spheres
+    void explode() {
+        stage = 1; // switch to explosion stage
+
+        for (int i = 0; i < expl_count; i++) {
+            sphere_loc.push_back(sphere_loc[0]);
+            sphere_vel.push_back(5.0f * sample_vel());
+            sphere_life.push_back(p_life + noise(0.1f));
+        }
+        generate_color();
+        // delete the first item (the original sphere) in each vector
+        sphere_loc[0] = sphere_loc[expl_count];
+        sphere_loc.pop_back();
+        sphere_vel[0] = sphere_vel[expl_count];
+        sphere_vel.pop_back();
+        sphere_col[0] = sphere_col[expl_count];
+        sphere_col.pop_back();
+        sphere_life[0] = sphere_life[expl_count];
+        sphere_life.pop_back();
+    }
+
+    // generate random float in [-0.5, +0.5] * scale
+    float noise(float scale) {
+        return scale * static_cast <float> (rand()) / static_cast <float> (RAND_MAX) - 0.5;
+    }
+
+    // sample velocity on a sphere
+    glm::vec3 sample_vel() {
+        float theta = 2 * M_PI * static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  // 0 - 2PI
+        float phi = M_PI * static_cast <float> (rand()) / static_cast <float> (RAND_MAX); // 0 - PI
+        float noise = 1 - (0.25f * static_cast <float> (rand()) / static_cast <float> (RAND_MAX)); // 0.75 - 1
+        return noise * glm::vec3(cos(theta) * sin(phi), sin(theta) * sin(phi) , cos(phi));
+    }
+
+    // sample color
+    void generate_color() {
+        glm::vec3 col0;
+        glm::vec3 col1;
+        switch (color_type) {
+        case 0:
+            col0 = glm::vec3(1.0f, 0.0f, 0.0f); // red
+            col1 = glm::vec3(0.0f, 0.0f, 1.0f); // blue
+            break;
+        case 1:
+            col0 = glm::vec3(0.0f, 1.0f, 1.0f); // cyan
+            col1 = glm::vec3(1.0f, 1.0f, 0.0f); // yellow
+            break;
+        default:
+            col0 = glm::vec3(1.0f, 0.0f, 1.0f); // magenta
+            col1 = glm::vec3(0.0f, 1.0f, 0.0f); // green
+        }
+        for (int i = 0; i < expl_count; i++) {
+            if (noise(1.0f) > 0) sphere_col.push_back(col0);
+            else sphere_col.push_back(col1);
+        }
+    }
+};
+
+firework fw0;
 
 int main(int argc, char* argv[]) {
 
@@ -90,7 +211,7 @@ int main(int argc, char* argv[]) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
     //Create a window (offsetx, offsety, width, height, flags)
-    SDL_Window* window = SDL_CreateWindow("Sphere Fire Interaction", 100, 100, screen_width, screen_height, SDL_WINDOW_OPENGL);
+    SDL_Window* window = SDL_CreateWindow("Firework Simulation", 100, 100, screen_width, screen_height, SDL_WINDOW_OPENGL);
     aspect = screen_width / (float)screen_height; //aspect ratio (needs to be updated if the window is resized)
 
     //The above window cannot be resized which makes some code slightly easier.
@@ -121,17 +242,9 @@ int main(int argc, char* argv[]) {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     loadShader(vertexShader, "../ParticleSystems/Shader/vertexshader.txt");
 
-    //Load the vertex Shader for particles
-    GLuint ptc_vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    loadShader(ptc_vertexShader, "../ParticleSystems/Shader/ptc_vertexshader.txt");
-
     //Load the default fragment Shader
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     loadShader(fragmentShader, "../ParticleSystems/Shader/fragmentshader.txt");
-
-    //Load the fragment Shader for particles
-    GLuint ptc_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    loadShader(ptc_fragmentShader, "../ParticleSystems/Shader/ptc_fragmentshader.txt");
 
 
     //Join the vertex and fragment shaders together into one program
@@ -142,83 +255,52 @@ int main(int argc, char* argv[]) {
     glBindFragDataLocation(shaderProgram, 0, "outColor"); // set output
     glLinkProgram(shaderProgram); //run the linker
 
-    GLuint ptc_shaderProgram = glCreateProgram();
-    glAttachShader(ptc_shaderProgram, ptc_vertexShader);
-    glAttachShader(ptc_shaderProgram, ptc_fragmentShader);
-    glBindFragDataLocation(ptc_shaderProgram, 0, "outColor"); // set output
-    glLinkProgram(ptc_shaderProgram); //run the linker
+    glUseProgram(shaderProgram);
 
     //============================ Model Setup ======================================
-
-    float ptc_vert[] = {
-        // X      Y     Z
-          0.0f, 0.0f, 0.0f
-    };
-
 
     std::vector< float > vertices;
     std::vector< float > uvs; // Won't be used at the moment.
     std::vector< float > normals;
     loadobj("../ParticleSystems/Assets/sphere.obj", vertices, uvs, normals);
     sph_vert = vertices.size();
-    loadobj("../ParticleSystems/Assets/stones.obj", vertices, uvs, normals); // append to the vector (does not matter since both objects are using the same format)
-    env_vert = vertices.size();
+    loadobj("../ParticleSystems/Assets/icosphere.obj", vertices, uvs, normals); // append to the vector (does not matter since both objects are using the same format)
+    ico_vert = vertices.size();
 
     //============================ Buffer Setup ======================================
 
     //Build a Vertex Array Object. This stores the VBO and attribute mappings in one object
-    GLuint vao, vao_sph;
-    glGenVertexArrays(1, &vao); // VAO for particles
-    glGenVertexArrays(1, &vao_sph); // VAO for the sphere and stones
+    GLuint vao;
+    glGenVertexArrays(1, &vao); 
+    glBindVertexArray(vao);
 
-    glBindVertexArray(vao); //Bind the above created VAO to the current context
+    GLuint vbo[2];
+    glGenBuffers(2, vbo);  //Create 1 buffer called vbo
 
-    //Allocate memory on the graphics card to store geometry (vertex buffer object)
-    GLuint vbo;
-    glGenBuffers(1, &vbo);  //Create 1 buffer called vbo
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-    glBufferData(GL_ARRAY_BUFFER, sizeof(ptc_vert), ptc_vert, GL_STATIC_DRAW); //upload vertices to vbo
-    //GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW = geometry changes infrequently
-    //GL_STREAM_DRAW = geom. changes frequently.  This effects which types of GPU memory is used
-
-    //Tell OpenGL how to set fragment shader input (for particles)
-    GLint posAttrib = glGetAttribLocation(ptc_shaderProgram, "position");
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
+    //Tell OpenGL how to set fragment shader input (for sphere)
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
     //Attribute, vals/attrib., type, normalized?, stride, offset
     //Binds to VBO current GL_ARRAY_BUFFER 
     glEnableVertexAttribArray(posAttrib);
 
-
-    // Sphere and environment Data
-    glBindVertexArray(vao_sph);
-
-    GLuint vbo_sph[2];
-    glGenBuffers(2, vbo_sph);  //Create 1 buffer called vbo
-
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_sph[0]);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
-    //Tell OpenGL how to set fragment shader input (for sphere)
-    GLint posAttrib_1 = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(posAttrib_1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-    //Attribute, vals/attrib., type, normalized?, stride, offset
-    //Binds to VBO current GL_ARRAY_BUFFER 
-    glEnableVertexAttribArray(posAttrib_1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_sph[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
     glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), &normals[0], GL_STATIC_DRAW);
 
-    GLint normalAttrib_1 = glGetAttribLocation(shaderProgram, "inNormal");
-    glVertexAttribPointer(normalAttrib_1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
-    glEnableVertexAttribArray(normalAttrib_1);
+    GLint normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
+    glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
+    glEnableVertexAttribArray(normalAttrib);
 
 
     glEnable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
-    glDisable(GL_CULL_FACE);
 
+    uniModel = glGetUniformLocation(shaderProgram, "model");
+    uniView = glGetUniformLocation(shaderProgram, "view");
+    uniProj = glGetUniformLocation(shaderProgram, "proj");
 
     //Event Loop (Loop forever processing each event as fast as possible)
     SDL_Event windowEvent;
@@ -235,7 +317,6 @@ int main(int argc, char* argv[]) {
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_f) //If "f" is pressed
                 fullscreen = !fullscreen;
             SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
-            move_obj(windowEvent, sph_loc, look_at - cam_loc, up, 0.2);
         }
 
         // Clear the screen to default color
@@ -247,7 +328,7 @@ int main(int argc, char* argv[]) {
         lastTime = SDL_GetTicks() / 1000.f;
         if (saveOutput) dt += .07; //Fix framerate at 14 FPS
 
-        update(dt, ptc_shaderProgram, shaderProgram, vao, vao_sph);
+        update(dt);
 
         printf("FPS: %i \n", int(1 / dt));
 
@@ -258,19 +339,14 @@ int main(int argc, char* argv[]) {
     }
 
     //Clean Up
-    glDeleteProgram(ptc_shaderProgram);
-    glDeleteShader(ptc_fragmentShader);
-    glDeleteShader(ptc_vertexShader);
 
     glDeleteProgram(shaderProgram);
     glDeleteShader(fragmentShader);
     glDeleteShader(vertexShader);
 
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, vbo_sph);
+    glDeleteBuffers(1, vbo);
 
     glDeleteVertexArrays(1, &vao);
-    glDeleteVertexArrays(1, &vao_sph);
 
     SDL_GL_DeleteContext(context);
     SDL_Quit();
@@ -287,45 +363,22 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 0.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    fire = ParticleSystem(7500, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
-
-    sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
-    env_loc = glm::vec3(0.0f, 0.0f, -3.5f);
-    sph_rad = 1.5f;
-    sph_color = glm::vec3(1.0f, 1.0f, 1.0f);
-    env_color = glm::vec3(0.5f, 0.5f, 0.5f);
+    sph_rad = 0.1f;
+    fw0 = firework();
 };
 
-void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
+void update(float dt) {
 
     set_camera();
-    //Where to model, view, and projection matricies are stored on the GPU
-    uniModel = glGetUniformLocation(shader1, "model");
-    uniView = glGetUniformLocation(shader1, "view");
-    uniProj = glGetUniformLocation(shader1, "proj");
-    uniColor = glGetUniformLocation(shader1, "inColor");
-    glUseProgram(shader1); //Set the particle shader to active
-    glBindVertexArray(vao1);
-    draw_particles(dt);
 
-
-    set_camera();
-    uniModel = glGetUniformLocation(shader2, "model");
-    uniView = glGetUniformLocation(shader2, "view");
-    uniProj = glGetUniformLocation(shader2, "proj");
-    glUseProgram(shader2);
-    glBindVertexArray(vao2);
     draw_sphere(dt);
-
-    draw_env(dt);
-
 
     computePhysics(dt);
 }
 
 void computePhysics(float dt) {
-    fire.update(dt, ParticleSystem::particle_type::smoke, sph_loc, sph_rad);
-    printf("Particle Count: %i \n", fire.Pos.size());
+    fw0.update(dt);
+    //printf("Particle Count: %i \n", fire.Pos.size());
 }
 
 void set_camera() {
@@ -340,34 +393,15 @@ void set_camera() {
     glPointSize(8.0f);
 }
 
-void draw_particles(float dt) {
-    // iterate through all particles
-    for (int i = 0; i < fire.Pos.size(); i++) {
-        glm::mat4 model = glm::mat4();
-        model = glm::translate(model, fire.Pos[i]);
-        model = glm::scale(model, glm::vec3(1));
-        glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform3f(uniColor, fire.Clr[i].r, fire.Clr[i].g, fire.Clr[i].b);
-        glDrawArrays(GL_POINTS, 0, 1); //(Primitives, starting index, Number of vertices)
-    }
-
-}
-
 void draw_sphere(float dt) {
-    glm::mat4 model = glm::mat4();
-    model = glm::translate(model, sph_loc);
-    model = glm::scale(model, glm::vec3(sph_rad));
-    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, sph_color.r, sph_color.g, sph_color.b);
-    glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, starting index, Number of vertices)
-
+    // draw every sphere in firework0's list
+    for (int i = 0; i < fw0.sphere_loc.size(); i++) {
+        glm::mat4 model = glm::mat4();
+        model = glm::translate(model, fw0.sphere_loc[i]);
+        model = glm::scale(model, glm::vec3(sph_rad));
+        glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform3f(uniColor, fw0.sphere_col[i].r, fw0.sphere_col[i].g, fw0.sphere_col[i].b);
+        glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, starting index, Number of vertices)
+    }
 }
 
-void draw_env(float dt) {
-    glm::mat4 model = glm::mat4();
-    model = glm::translate(model, env_loc);
-    model = glm::scale(model, glm::vec3(1.0f));
-    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, env_color.r, env_color.g, env_color.b);
-    glDrawArrays(GL_TRIANGLES, sph_vert / 3, env_vert / 3); // the starting element is the first one after the sphere data
-}
