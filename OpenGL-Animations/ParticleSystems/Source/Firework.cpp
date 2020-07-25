@@ -87,24 +87,29 @@ public:
 
     firework() { // default firework
         position = glm::vec3(0.0f, 0.0f, 0.0f);
+        interval = 4.0f;
+        timer = interval;
         stage = 0;
         sphere_loc.push_back(position);
-        sphere_vel.push_back(glm::vec3(0.0f, 0.0f, 10.0f)); // straight up
+        sphere_vel.push_back(glm::vec3(0.0f + noise(0.1f), 0.0f + noise(0.1f), 15.0f + noise(0.1f)));
         sphere_col.push_back(glm::vec3(1.0f, 1.0f, 1.0f)); // white
 
-        expl_count = 50;
-        r_life = 1.2f;
-        p_life = 1.0f;
+        expl_count = 200;
+        r_life = 1.6f;
+        p_life = 1.5f;
         color_type = int(3 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 
         sphere_life.push_back(r_life);
+        sphere_life_ini.push_back(r_life);
     }
 
-    firework(glm::vec3 pos, float rlife, float plife, int explc) { // customized firework
+    firework(glm::vec3 pos, float t, float rlife, float plife, int explc) { // customized firework
         position = pos;
+        interval = t;
+        timer = interval;
         stage = 0;
         sphere_loc.push_back(position);
-        sphere_vel.push_back(glm::vec3(0.0f + noise(0.1f), 0.0f + noise(0.1f), 10.0f + noise(0.1f)));
+        sphere_vel.push_back(glm::vec3(0.0f + noise(0.1f), 0.0f + noise(0.1f), 15.0f + noise(0.1f)));
         sphere_col.push_back(glm::vec3(1.0f, 1.0f, 1.0f));
 
         expl_count = explc;
@@ -113,24 +118,54 @@ public:
         color_type = int(3 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 
         sphere_life.push_back(rlife);
+        sphere_life_ini.push_back(r_life);
     }
 
     void update(float dt) {
+        timer -= dt;
         for (int i = 0; i < sphere_loc.size(); i++) {
             sphere_loc[i] += (sphere_vel[i] * dt);
             sphere_vel[i].z += (g * dt);
             sphere_life[i] -= dt;
         }
-        // transition to explosion stage
+        // launch stage
         if (stage == 0) {
             if (sphere_life[0] <= 0) {
                 explode();
             }
         }
+        // explosion stage
+        else { 
+            float damping_fac = 0.95f;
+            vector<int> del_list;
+            for (int i = sphere_loc.size() - 1; i >= 0 ; i--) {
+                sphere_vel[i] *= damping_fac; // damping effect
+                if (sphere_life[i] <= 0) del_list.push_back(i);
+            }
+            for (int i : del_list) { // delete the dead spheres
+                del_sphere(i);
+            }
+        }
+        // restart
+        if (timer <= 0) {
+            timer = interval;
+            stage = 0;
+            g = -9.8f;
+            sphere_loc.push_back(position);
+            sphere_vel.push_back(glm::vec3(0.0f + noise(0.1f), 0.0f + noise(0.1f), 15.0f + noise(0.1f)));
+            sphere_col.push_back(glm::vec3(1.0f, 1.0f, 1.0f));
+            color_type = int(3 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+            sphere_life.push_back(1.6f);
+            sphere_life_ini.push_back(1.6f);
+        }
     }
 
 private:
     float g = -9.8f;
+
+    float interval; // time interval between two launches
+    float timer;
+
     int expl_count; // number of particles generated in explosion
     float r_life; // rocket life
     float p_life; // particle life
@@ -140,22 +175,33 @@ private:
     // explosion creates a number of smaller spheres
     void explode() {
         stage = 1; // switch to explosion stage
-
+        g = -7.0f;
+        float explosion_speed = 9.0f;
         for (int i = 0; i < expl_count; i++) {
             sphere_loc.push_back(sphere_loc[0]);
-            sphere_vel.push_back(5.0f * sample_vel());
-            sphere_life.push_back(p_life + noise(0.1f));
+            sphere_vel.push_back(explosion_speed * sample_vel());
+            float life = p_life + noise(0.4f);
+            sphere_life_ini.push_back(life);
+            sphere_life.push_back(life);
         }
         generate_color();
-        // delete the first item (the original sphere) in each vector
-        sphere_loc[0] = sphere_loc[expl_count];
+        // delete the first sphere (the rocket)
+        del_sphere(0);
+    }
+
+    // delete the sphere at index i
+    void del_sphere(int i) {
+        int last = sphere_loc.size() - 1;
+        sphere_loc[i] = sphere_loc[last];
         sphere_loc.pop_back();
-        sphere_vel[0] = sphere_vel[expl_count];
+        sphere_vel[i] = sphere_vel[last];
         sphere_vel.pop_back();
-        sphere_col[0] = sphere_col[expl_count];
+        sphere_col[i] = sphere_col[last];
         sphere_col.pop_back();
-        sphere_life[0] = sphere_life[expl_count];
+        sphere_life[i] = sphere_life[last];
         sphere_life.pop_back();
+        sphere_life_ini[i] = sphere_life_ini[last];
+        sphere_life_ini.pop_back();
     }
 
     // generate random float in [-0.5, +0.5] * scale
@@ -167,7 +213,7 @@ private:
     glm::vec3 sample_vel() {
         float theta = 2 * M_PI * static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  // 0 - 2PI
         float phi = M_PI * static_cast <float> (rand()) / static_cast <float> (RAND_MAX); // 0 - PI
-        float noise = 1 - (0.25f * static_cast <float> (rand()) / static_cast <float> (RAND_MAX)); // 0.75 - 1
+        float noise = 1 - (0.1f * static_cast <float> (rand()) / static_cast <float> (RAND_MAX)); // 0.9 - 1
         return noise * glm::vec3(cos(theta) * sin(phi), sin(theta) * sin(phi) , cos(phi));
     }
 
@@ -360,10 +406,11 @@ void init() {
     fullscreen = false;
 
     cam_loc = glm::vec3(15.f, 15.f, 1.8f);
-    look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+    look_at = glm::vec3(0.0f, 0.0f, 5.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
     sph_rad = 0.1f;
+
     fw0 = firework();
 };
 
@@ -400,7 +447,12 @@ void draw_sphere(float dt) {
         model = glm::translate(model, fw0.sphere_loc[i]);
         model = glm::scale(model, glm::vec3(sph_rad));
         glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform3f(uniColor, fw0.sphere_col[i].r, fw0.sphere_col[i].g, fw0.sphere_col[i].b);
+        if (fw0.stage == 0) 
+            glUniform3f(uniColor, fw0.sphere_col[i].r, fw0.sphere_col[i].g, fw0.sphere_col[i].b);
+        else {
+            float mult = 1 - (fw0.sphere_life[i] / fw0.sphere_life_ini[i]);
+            glUniform3f(uniColor, mult + (1-mult) * fw0.sphere_col[i].r, mult + (1 - mult) * fw0.sphere_col[i].g, mult + (1 - mult) * fw0.sphere_col[i].b);
+        }
         glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, starting index, Number of vertices)
     }
 }
