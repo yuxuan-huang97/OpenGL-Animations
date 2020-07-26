@@ -287,7 +287,7 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 0.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    fire = ParticleSystem(7500, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
+    fire = ParticleSystem(7500, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, src_type::dim2, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
 
     sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
     env_loc = glm::vec3(0.0f, 0.0f, -3.5f);

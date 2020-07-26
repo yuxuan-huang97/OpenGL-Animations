@@ -282,7 +282,7 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 0.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    water = ParticleSystem(5000, 3.0f, 0.0f, 150000, glm::vec3(0, 5, 5), 1.0f, axis::X, 10.0f, 10.0f, glm::vec3(0.4f, 0.9f, 1.0f));
+    water = ParticleSystem(5000, 3.0f, 0.0f, 150000, glm::vec3(0, 5, 5), 1.0f, src_type::dim2, axis::X, 10.0f, 10.0f, glm::vec3(0.4f, 0.9f, 1.0f));
 
     sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
     sph_rad = 1.0f;
