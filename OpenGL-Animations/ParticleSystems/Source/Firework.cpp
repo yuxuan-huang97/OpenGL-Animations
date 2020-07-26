@@ -58,7 +58,7 @@ const GLchar* fragmentSource;
 glm::vec3 cam_loc, look_at, up;
 
 // uvsphere and icosphere spec
-float sph_rad, ico_rad;
+float rocket_rad, ptc_rad, tail_rad;
 int sph_vert, ico_vert; // number of vertices for sphere and environment
 
 //Index of where to model, view, and projection matricies are stored on the GPU
@@ -68,9 +68,8 @@ void init();
 void update(float dt);
 void computePhysics(float dt);
 void set_camera();
-void draw_particles(float dt);
-void draw_sphere(float dt);
-void draw_ico(float dt);
+void draw_sphere();
+void draw_ico();
 
 class firework {
 public:
@@ -78,12 +77,13 @@ public:
     int stage; // 0 for launch, 1 for explosion
 
     vector<glm::vec3> sphere_loc; // sphere for larger particles
-    vector<glm::vec3> ico_loc; // icosphere for smaller particles (tails)
     vector<glm::vec3> sphere_vel; // velocity of the spheres
     vector<glm::vec3> sphere_col; // color of the spheres
 
     vector<float> sphere_life; // life of the spheres
     vector<float> sphere_life_ini; // initial life of the spheres (only used in the explosion stage)
+
+    ParticleSystem tail;
 
     firework() { // default firework
         position = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -91,7 +91,7 @@ public:
         timer = interval;
         stage = 0;
         sphere_loc.push_back(position);
-        sphere_vel.push_back(glm::vec3(0.0f + noise(0.1f), 0.0f + noise(0.1f), 15.0f + noise(0.1f)));
+        sphere_vel.push_back(glm::vec3(0.0f + noise(1.0f), 0.0f + noise(1.0f), 15.0f + noise(0.5f)));
         sphere_col.push_back(glm::vec3(1.0f, 1.0f, 1.0f)); // white
 
         expl_count = 200;
@@ -101,6 +101,9 @@ public:
 
         sphere_life.push_back(r_life);
         sphere_life_ini.push_back(r_life);
+
+        tail = ParticleSystem(2500, 0.5f, 0.1f, 10000, position, rocket_rad, src_type::dim3, axis::Z, -2.0f, 20.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+        tail.set_collision(false);
     }
 
     firework(glm::vec3 pos, float t, float rlife, float plife, int explc) { // customized firework
@@ -119,6 +122,9 @@ public:
 
         sphere_life.push_back(rlife);
         sphere_life_ini.push_back(r_life);
+
+        tail = ParticleSystem(2500, 0.5f, 0.1f, 10000, position, rocket_rad, src_type::dim3, axis::Z, -2.0f, 20.0f, glm::vec3(1.0f, 1.0f, 1.0f));
+        tail.set_collision(false);
     }
 
     void update(float dt) {
@@ -130,6 +136,7 @@ public:
         }
         // launch stage
         if (stage == 0) {
+            tail.set_src_pos(sphere_loc[0]); // the particle source follows the rocket
             if (sphere_life[0] <= 0) {
                 explode();
             }
@@ -146,6 +153,8 @@ public:
                 del_sphere(i);
             }
         }
+        tail.update(dt, ParticleSystem::particle_type::others, glm::vec3(0.0f, 0.0f, 0.0f), 0.0f);
+
         // restart
         if (timer <= 0) {
             timer = interval;
@@ -157,6 +166,9 @@ public:
             color_type = int(3 * static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
             sphere_life.push_back(1.6f);
             sphere_life_ini.push_back(1.6f);
+
+            tail.set_gen(true);
+            tail.set_src_pos(sphere_loc[0]);
         }
     }
 
@@ -176,6 +188,7 @@ private:
     void explode() {
         stage = 1; // switch to explosion stage
         g = -7.0f;
+        tail.set_gen(false); // stop emitting particle tail
         float explosion_speed = 9.0f;
         for (int i = 0; i < expl_count; i++) {
             sphere_loc.push_back(sphere_loc[0]);
@@ -409,7 +422,9 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 5.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    sph_rad = 0.1f;
+    rocket_rad = 0.13f;
+    ptc_rad = 0.1f;
+    tail_rad = 0.01f;
 
     fw0 = firework();
 };
@@ -418,7 +433,8 @@ void update(float dt) {
 
     set_camera();
 
-    draw_sphere(dt);
+    draw_sphere();
+    draw_ico();
 
     computePhysics(dt);
 }
@@ -440,20 +456,33 @@ void set_camera() {
     glPointSize(8.0f);
 }
 
-void draw_sphere(float dt) {
+void draw_sphere() {
     // draw every sphere in firework0's list
     for (int i = 0; i < fw0.sphere_loc.size(); i++) {
         glm::mat4 model = glm::mat4();
         model = glm::translate(model, fw0.sphere_loc[i]);
-        model = glm::scale(model, glm::vec3(sph_rad));
-        glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-        if (fw0.stage == 0) 
+        if (fw0.stage == 0) {
+            model = glm::scale(model, glm::vec3(rocket_rad));
             glUniform3f(uniColor, fw0.sphere_col[i].r, fw0.sphere_col[i].g, fw0.sphere_col[i].b);
+        }
         else {
+            model = glm::scale(model, glm::vec3(ptc_rad));
             float mult = 1 - (fw0.sphere_life[i] / fw0.sphere_life_ini[i]);
             glUniform3f(uniColor, mult + (1-mult) * fw0.sphere_col[i].r, mult + (1 - mult) * fw0.sphere_col[i].g, mult + (1 - mult) * fw0.sphere_col[i].b);
         }
+        glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
         glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, starting index, Number of vertices)
     }
 }
 
+void draw_ico() {
+    // draw every icosphere in firework0's list
+    for (int i = 0; i < fw0.tail.Pos.size(); i++) {
+        glm::mat4 model = glm::mat4();
+        model = glm::translate(model, fw0.tail.Pos[i]);
+        model = glm::scale(model, glm::vec3(tail_rad));
+        glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform3f(uniColor, fw0.tail.Clr[i].r, fw0.tail.Clr[i].g, fw0.tail.Clr[i].b);
+        glDrawArrays(GL_TRIANGLES, sph_vert / 3, ico_vert / 3); //(Primitives, starting index, Number of vertices)
+    }
+}

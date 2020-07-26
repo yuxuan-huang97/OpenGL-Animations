@@ -11,10 +11,13 @@ ParticleSystem::ParticleSystem() { // default particle system
 
 	// initializing global parameters for particle system
 	genRate = 2500; // generation rate
+	generate = true;
+	collision = true;
 	lifespan = 2; //lifespan
 	lfspan_ptb = 0; //lifespan perturbation
 	max_ptc_ct = 20000; // maximum particle count
 	src_pos = glm::vec3(0.0f, 0.0f, 0.0f); // source position
+	src_dim = src_type::dim2; // source dimension
 	src_radius = 1.0f; // source radius
 	src_normal = axis::Z; // source normal
 	ini_vel = 1.0f;  // initial velocity
@@ -27,13 +30,16 @@ ParticleSystem::ParticleSystem() { // default particle system
 	Clr.reserve(max_ptc_ct);
 }
 
-ParticleSystem::ParticleSystem(float gr, float ls, float lsptb, int mpc, glm::vec3 pos, float sr, axis n, float vel, float vptb, glm::vec3 clr) {
+ParticleSystem::ParticleSystem(float gr, float ls, float lsptb, int mpc, glm::vec3 pos, float sr, src_type st, axis n, float vel, float vptb, glm::vec3 clr) {
 	// initializing global parameters for particle system
 	genRate = gr; // generation rate
+	generate = true;
+	collision = true;
 	lifespan = ls; //lifespan
 	lfspan_ptb = lsptb; //lifespan perturbation
 	max_ptc_ct = mpc; // maximum particle count
 	src_pos = pos; // source position
+	src_dim = st; // source dimension
 	src_radius = sr; // source radius
 	src_normal = n; // source normal
 	ini_vel = vel;  // initial velocity
@@ -50,7 +56,7 @@ ParticleSystem::ParticleSystem(float gr, float ls, float lsptb, int mpc, glm::ve
 // Update the particles in a fluid-like/smoke-like behavior
 void ParticleSystem::update(float dt, ParticleSystem::particle_type t, glm::vec3 obs_loc, float obs_rad) {
 	removeParticles(); // remove the dead particles
-	spawnParticles(dt); // spawn new particles
+	if (generate) spawnParticles(dt); // spawn new particles
 	
 	for (int i = 0; i < Pos.size(); i++) { // update pos, vel, and life (and color)
 		Pos[i] += Vel[i] * dt;
@@ -61,27 +67,32 @@ void ParticleSystem::update(float dt, ParticleSystem::particle_type t, glm::vec3
 			Vel[i].y *= 0.8;
 			Clr[i].g = Life[i] / lifespan;
 		};
+		// if particle type is "others", velocity update is done elsewhere
 		Life[i] -= dt;
 
-
-		//collision detection
-		glm::vec3 dir = Pos[i] - obs_loc;
-		float dis = glm::length(dir);
-		//printf("Distance: %f \n", dis);
-		if (dis <= obs_rad) { // collide
-			// return to valid state
-			dir /= dis;
-			Pos[i] = obs_loc + dir * (obs_rad + 0.01f);
-			//if fluid particle then reflect
-			if (t == ParticleSystem::particle_type::fluid) {
-				float tmp = glm::dot(Vel[i], dir);
-				Vel[i] -= 2 * tmp * dir;
-				Vel[i] *= 0.5f;
+		if (collision) {
+			//collision detection
+			glm::vec3 dir = Pos[i] - obs_loc;
+			float dis = glm::length(dir);
+			//printf("Distance: %f \n", dis);
+			if (dis <= obs_rad) { // collide
+				// return to valid state
+				dir /= dis;
+				Pos[i] = obs_loc + dir * (obs_rad + 0.01f);
+				//if fluid particle then reflect
+				if (t == ParticleSystem::particle_type::fluid) {
+					float tmp = glm::dot(Vel[i], dir);
+					Vel[i] -= 2 * tmp * dir;
+					Vel[i] *= 0.5f;
+				}
 			}
 		}
 	}
 }
 
+void ParticleSystem::set_src_pos(glm::vec3 newpos) {
+	src_pos = newpos;
+}
 
 void ParticleSystem::spawnParticles(float dt) {
 	// determine how many particles to spawn per dt
@@ -135,18 +146,25 @@ glm::vec3 ParticleSystem::sampleSource() {
 	float theta = 2 * M_PI * static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  // 0 - 2PI
 	float r = sqrt(src_radius * static_cast <float> (rand()) / static_cast <float> (RAND_MAX)); // 0 - src_radius
 
-	float v1 = r * cos(theta); // displacement from the center of the source
-	float v2 = r * sin(theta);
+	if (src_dim == src_type::dim2) { // 2D source
+		float v1 = r * cos(theta); // displacement from the center of the source
+		float v2 = r * sin(theta);
 
-	// determine final spawn location
-	switch (src_normal) {
-	case axis::X:
-		pos += glm::vec3(0, v2, v1);break;
-	case axis::Y:
-		pos += glm::vec3(v1, 0, v2); break;
-	default:
-		pos += glm::vec3(v1, v2, 0);
+		// determine final spawn location
+		switch (src_normal) {
+		case axis::X:
+			pos += glm::vec3(0, v2, v1); break;
+		case axis::Y:
+			pos += glm::vec3(v1, 0, v2); break;
+		default:
+			pos += glm::vec3(v1, v2, 0);
+		}
 	}
+	else { // 3D source
+		float phi = M_PI * static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  // 0 - PI
+		pos += r * glm::vec3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
+	}
+
 	return pos;
 }
 
@@ -179,4 +197,12 @@ float ParticleSystem::sampleLifespan() {
 	ls *= lfspan_ptb;
 	ls += lifespan;
 	return ls;
+}
+
+void ParticleSystem::set_gen(bool b) {
+	generate = b;
+}
+
+void ParticleSystem::set_collision(bool b) {
+	collision = b;
 }
