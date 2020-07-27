@@ -348,9 +348,7 @@ void draw_particles(float dt) {
     for (int i = 0; i < water.Pos.size(); i++) {
         glm::mat4 model = glm::mat4();
         model = glm::translate(model, water.Pos[i]);
-        //glPointSize(4.0f);
-        float size = autosize(cam_loc, water.Pos[i], 60.0f);
-        glPointSize(size);
+        glPointSize(autosize(cam_loc, water.Pos[i], 60.0f));
         glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
         glUniform3f(uniColor, water.Clr[i].r, water.Clr[i].g, water.Clr[i].b);
         glDrawArrays(GL_POINTS, 0, 1); //(Primitives, Which VBO, Number of vertices)
