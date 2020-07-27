@@ -385,7 +385,10 @@ int main(int argc, char* argv[]) {
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_f) //If "f" is pressed
                 fullscreen = !fullscreen;
             SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
+
+            move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.1f);
         }
+        bound_rotate(window, cam_loc, look_at);
 
         // Clear the screen to default color
         glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
@@ -398,7 +401,7 @@ int main(int argc, char* argv[]) {
 
         update(dt);
 
-        printf("FPS: %i \n", int(1 / dt));
+        //printf("FPS: %i \n", int(1 / dt));
 
         if (saveOutput) Win2PPM(screen_width, screen_height);
 
