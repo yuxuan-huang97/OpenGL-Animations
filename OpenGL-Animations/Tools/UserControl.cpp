@@ -125,6 +125,25 @@ void bound_rotate(SDL_Window* window, glm::vec3 pos, glm::vec3& lookat) {
     lookat = pos + view;
 }
 
+void grab_obj(SDL_Event event, glm::vec3 pos, glm::vec3 lookat, glm::vec3 objloc,\
+    float& relative_dis, float& relativeX, float& relativeY, bool& grabbed) {
+    if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_g) {
+        grabbed = !grabbed;
+        if (grabbed) {
+            glm::vec3 view = glm::normalize(lookat - pos);
+            glm::vec3 obj = glm::normalize(objloc - pos);
+
+            relative_dis = glm::length(objloc - pos);
+            relativeX = atan2(obj.y, obj.x) - atan2(view.y, view.x);
+            relativeY = acos(obj.z) - acos(view.z);
+
+
+            printf("object grabbed\nRelativeX: %f, RelativeY: %f, Dis: %f\n", relativeX*180/3.14, relativeY*180/3.14, relative_dis);
+        }
+        else printf("object released\n");
+    }
+}
+
 void rotate(float rotX, float rotY, float speed, glm::vec3& target) {
     // convert to spherical coordinate
     float theta = atan2(target.y, target.x); // -PI - +PI
