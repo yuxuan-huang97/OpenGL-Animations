@@ -27,6 +27,6 @@ void move_camera(SDL_Event event, glm::vec3& pos, glm::vec3& lookat, glm::vec3 u
 
 // rotate the camera when cursor is close to the boundaries
 // needs to be called in every frame to be effective
-void bound_rotate(SDL_Window* window, glm::vec3 pos, glm::vec3& lookat);
+void bound_rotate(SDL_Window* window, glm::vec3 pos, glm::vec3& lookat, float speed);
 
 void rotate(float rotX, float rotY, float speed, glm::vec3& target);

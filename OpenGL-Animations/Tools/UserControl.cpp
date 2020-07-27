@@ -104,14 +104,13 @@ void move_camera(SDL_Event event, glm::vec3& pos, glm::vec3& lookat, glm::vec3 u
     }
 }
 
-void bound_rotate(SDL_Window* window, glm::vec3 pos, glm::vec3& lookat) {
+void bound_rotate(SDL_Window* window, glm::vec3 pos, glm::vec3& lookat, float speed) {
     
     glm::vec3 view = lookat - pos;
 
     int x, y, w, h;
     float rotX = 0;
     float rotY = 0;
-    float speed = 0.003;
     int tolerance = 10;
     SDL_GetMouseState(&x, &y);
     SDL_GetWindowSize(window, &w, &h);
