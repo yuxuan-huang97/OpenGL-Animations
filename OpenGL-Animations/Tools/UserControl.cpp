@@ -138,9 +138,9 @@ void grab_obj(SDL_Event event, glm::vec3 pos, glm::vec3 lookat, glm::vec3 objloc
             relativeY = acos(obj.z) - acos(view.z);
 
 
-            printf("object grabbed\nRelativeX: %f, RelativeY: %f, Dis: %f\n", relativeX*180/3.14, relativeY*180/3.14, relative_dis);
+            //printf("object grabbed\nRelativeX: %f, RelativeY: %f, Dis: %f\n", relativeX*180/3.14, relativeY*180/3.14, relative_dis);
         }
-        else printf("object released\n");
+        //else printf("object released\n");
     }
 }
 
