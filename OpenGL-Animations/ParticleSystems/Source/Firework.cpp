@@ -386,9 +386,9 @@ int main(int argc, char* argv[]) {
                 fullscreen = !fullscreen;
             SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
 
-            move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.1f);
+            move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.08f);
         }
-        bound_rotate(window, cam_loc, look_at);
+        bound_rotate(window, cam_loc, look_at, 0.003f);
 
         // Clear the screen to default color
         glClearColor(0.1f, 0.1f, 0.1f, 0.0f);

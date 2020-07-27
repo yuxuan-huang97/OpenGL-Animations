@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
             move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
             grab_obj(windowEvent, cam_loc, look_at, sph_loc, relative_dis, relativeX, relativeY, grabbed);
         }
-        bound_rotate(window, cam_loc, look_at);
+        bound_rotate(window, cam_loc, look_at, 0.01f);
 
         // Clear the screen to default color
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
