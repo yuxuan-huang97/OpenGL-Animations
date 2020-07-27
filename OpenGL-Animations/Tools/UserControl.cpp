@@ -111,15 +111,15 @@ void bound_rotate(SDL_Window* window, glm::vec3 pos, glm::vec3& lookat) {
     int x, y, w, h;
     float rotX = 0;
     float rotY = 0;
-    float speed = 0.005;
+    float speed = 0.003;
     int tolerance = 10;
     SDL_GetMouseState(&x, &y);
     SDL_GetWindowSize(window, &w, &h);
 
     if (x <= tolerance) rotX = -1.0f;
     else if (x >= w - tolerance - 1) rotX = 1.0f;
-    if (y <= tolerance) rotY = 1.0f;
-    else if (y >= h - tolerance - 1) rotY = -1.0f;
+    if (y <= tolerance) rotY = -1.0f;
+    else if (y >= h - tolerance - 1) rotY = 1.0f;
     rotate(rotX, rotY, speed, view);
 
     lookat = pos + view;
