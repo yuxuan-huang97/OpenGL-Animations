@@ -78,6 +78,7 @@ void computePhysics(float dt);
 void set_camera();
 void draw_particles(float dt);
 void draw_sphere(float dt);
+float autosize(glm::vec3 cam, glm::vec3 ptc, float size);
 
 int main(int argc, char* argv[]) {
 
@@ -288,7 +289,7 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 0.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    water = ParticleSystem(5000, 3.0f, 0.0f, 150000, glm::vec3(0, 5, 5), 1.0f, src_type::dim2, axis::X, 10.0f, 10.0f, glm::vec3(0.4f, 0.9f, 1.0f));
+    water = ParticleSystem(10000, 3.0f, 0.0f, 150000, glm::vec3(0, 5, 5), 1.0f, src_type::dim2, axis::X, 10.0f, 10.0f, glm::vec3(0.4f, 0.9f, 1.0f));
 
     sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
     sph_rad = 1.0f;
@@ -340,7 +341,6 @@ void set_camera() {
     glm::mat4 view = glm::lookAt(cam_loc, look_at, up); // camera location, look at point, up direction
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 
-    glPointSize(8.0f);
 }
 
 void draw_particles(float dt) {
@@ -348,7 +348,9 @@ void draw_particles(float dt) {
     for (int i = 0; i < water.Pos.size(); i++) {
         glm::mat4 model = glm::mat4();
         model = glm::translate(model, water.Pos[i]);
-        model = glm::scale(model, glm::vec3(1));
+        //glPointSize(4.0f);
+        float size = autosize(cam_loc, water.Pos[i], 60.0f);
+        glPointSize(size);
         glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
         glUniform3f(uniColor, water.Clr[i].r, water.Clr[i].g, water.Clr[i].b);
         glDrawArrays(GL_POINTS, 0, 1); //(Primitives, Which VBO, Number of vertices)
@@ -363,4 +365,9 @@ void draw_sphere(float dt) {
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
     glUniform3f(uniColor, sph_color.r, sph_color.g, sph_color.b);
     glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, Which VBO, Number of vertices)
+}
+
+float autosize(glm::vec3 cam, glm::vec3 ptc, float size) {
+    float dis = glm::length(ptc - cam);
+    return(size / dis);
 }
