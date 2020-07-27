@@ -68,6 +68,10 @@ int sph_vert; // number of vertices for sphere
 //Index of where to model, view, and projection matricies are stored on the GPU
 GLint uniModel, uniView, uniProj, uniColor;
 
+// user interaction variables
+bool grabbed;
+float relative_dis, relativeX, relativeY;
+
 void init();
 void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
 void computePhysics(float dt);
@@ -231,8 +235,10 @@ int main(int argc, char* argv[]) {
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_f) //If "f" is pressed
                 fullscreen = !fullscreen;
             SDL_SetWindowFullscreen(window, fullscreen ? SDL_WINDOW_FULLSCREEN : 0); //Set to full screen 
-            move_obj(windowEvent, sph_loc, look_at - cam_loc, up, 0.2);
+            move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
+            grab_obj(windowEvent, cam_loc, look_at, sph_loc, relative_dis, relativeX, relativeY, grabbed);
         }
+        bound_rotate(window, cam_loc, look_at);
 
         // Clear the screen to default color
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
@@ -244,7 +250,7 @@ int main(int argc, char* argv[]) {
         if (saveOutput) dt += .07; //Fix framerate at 14 FPS
 
         update(dt, ptc_shaderProgram, shaderProgram, vao, vao_sph);
-        printf("FPS: %i \n", int(1 / dt));
+        //printf("FPS: %i \n", int(1 / dt));
 
         if (saveOutput) Win2PPM(screen_width, screen_height);
 
@@ -287,11 +293,20 @@ void init() {
     sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
     sph_rad = 1.0f;
     sph_color = glm::vec3(1.0f, 0.0f, 0.0f);
+
+    grabbed = false;
 };
 
 void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
 
     set_camera();
+    
+    if (grabbed) {
+        sph_loc = glm::normalize(look_at - cam_loc);
+        rotate(-relativeX, relativeY, 1.0f, sph_loc);
+        sph_loc *= relative_dis;
+        sph_loc += cam_loc;
+    }
 
     //Where to model, view, and projection matricies are stored on the GPU
     uniModel = glGetUniformLocation(shader1, "model");
@@ -313,7 +328,7 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
 
 void computePhysics(float dt) {
     water.update(dt, ParticleSystem::particle_type::fluid, sph_loc, sph_rad);
-    printf("Particle Count: %i \n", water.Pos.size());
+    //printf("Particle Count: %i \n", water.Pos.size());
 }
 
 void set_camera() {
