@@ -79,6 +79,7 @@ void set_camera();
 void draw_particles(float dt);
 void draw_sphere(float dt);
 void draw_env(float dt);
+float autosize(glm::vec3 cam, glm::vec3 ptc, float size);
 
 int main(int argc, char* argv[]) {
 
@@ -293,7 +294,7 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 0.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    fire = ParticleSystem(7500, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, src_type::dim2, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
+    fire = ParticleSystem(10000, 0.5f, 0.1f, 150000, glm::vec3(0, 0, -3), 2.0f, src_type::dim2, axis::Z, 5.0f, 45.0f, glm::vec3(1.0f, 1.0f, 0.0f));
 
     sph_loc = glm::vec3(0.0f, 0.0f, 0.0f);
     env_loc = glm::vec3(0.0f, 0.0f, -3.5f);
@@ -352,8 +353,6 @@ void set_camera() {
     //Set the Camera Position and Orientation
     glm::mat4 view = glm::lookAt(cam_loc, look_at, up); // camera location, look at point, up direction
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
-
-    glPointSize(8.0f);
 }
 
 void draw_particles(float dt) {
@@ -361,7 +360,7 @@ void draw_particles(float dt) {
     for (int i = 0; i < fire.Pos.size(); i++) {
         glm::mat4 model = glm::mat4();
         model = glm::translate(model, fire.Pos[i]);
-        model = glm::scale(model, glm::vec3(1));
+        glPointSize(autosize(cam_loc, fire.Pos[i], 150.0f));
         glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
         glUniform3f(uniColor, fire.Clr[i].r, fire.Clr[i].g, fire.Clr[i].b);
         glDrawArrays(GL_POINTS, 0, 1); //(Primitives, starting index, Number of vertices)
@@ -386,4 +385,9 @@ void draw_env(float dt) {
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
     glUniform3f(uniColor, env_color.r, env_color.g, env_color.b);
     glDrawArrays(GL_TRIANGLES, sph_vert / 3, env_vert / 3); // the starting element is the first one after the sphere data
+}
+
+float autosize(glm::vec3 cam, glm::vec3 ptc, float size) {
+    float dis = glm::length(ptc - cam);
+    return(size / dis);
 }
