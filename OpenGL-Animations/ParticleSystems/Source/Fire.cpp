@@ -120,8 +120,6 @@ int main(int argc, char* argv[]) {
 
     //============================ Shader Setup ======================================
 
-    init();
-
     //Load the default vertex Shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     loadShader(vertexShader, "../ParticleSystems/Shader/vertexshader.txt");
