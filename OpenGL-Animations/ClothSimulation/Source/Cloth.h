@@ -22,6 +22,7 @@ public:
 
 	void update(float dt);
 
+	vector<float> vertex_buffer(); // return the positions of each vertex in vbo format
 	vector<int> index(); // return the index buffer of the cloth
 
 private:

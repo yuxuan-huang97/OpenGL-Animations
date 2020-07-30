@@ -40,18 +40,28 @@ void Cloth::init() {
 	}
 }
 
+vector<float> Cloth::vertex_buffer() {
+	vector<float> vertex_buffer;
+	for (int i = 0; i < pos.size(); i++) {
+		vertex_buffer.push_back(pos[i].x);
+		vertex_buffer.push_back(pos[i].y);
+		vertex_buffer.push_back(pos[i].z);
+	}
+	return vertex_buffer;
+}
+
 vector<int> Cloth::index() {
 	vector<int> index_buffer;
 	for (int i = 0; i < length - 1; i++) {
 		for (int j = 0; j < width - 1; j++) {
 			// first triangle index
-			index_buffer.push_back(i * width);
-			index_buffer.push_back(i * width + 1);
-			index_buffer.push_back((i + 1) * width + 1);
+			index_buffer.push_back(i * width + j);
+			index_buffer.push_back(i * width + 1 + j);
+			index_buffer.push_back((i + 1) * width + 1 + j);
 			// second triangle index
-			index_buffer.push_back(i * width);
-			index_buffer.push_back((i + 1) * width + 1);
-			index_buffer.push_back((i + 1) * width);
+			index_buffer.push_back(i * width + j);
+			index_buffer.push_back((i + 1) * width + 1 + j);
+			index_buffer.push_back((i + 1) * width + j);
 		}
 	}
 	return index_buffer;

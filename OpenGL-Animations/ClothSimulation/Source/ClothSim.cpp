@@ -37,10 +37,11 @@ GLint uniModel, uniView, uniProj, uniColor;
 
 // cloth specs
 Cloth cloth;
-vector<int> index;
+vector<float> vertices;
+vector<int> indices;
 
 void init();
-void update(float dt, GLuint ebo);
+void update(float dt);
 void draw_cloth();
 void set_camera();
 
@@ -118,7 +119,7 @@ int main(int argc, char* args[]) {
     glGenBuffers(1, &vbo);  //Create 1 buffer called vbo
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cloth.pos), &cloth.pos[0], GL_STREAM_DRAW); //upload vertices to vbo
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW); //upload vertices to vbo
     //GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW = geometry changes infrequently
     //GL_STREAM_DRAW = geom. changes frequently.  This effects which types of GPU memory is used
 
@@ -126,7 +127,7 @@ int main(int argc, char* args[]) {
     glGenBuffers(1, &ebo);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ARRAY_BUFFER, index.size() * sizeof(int), &index[0], GL_STREAM_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), &indices[0], GL_STREAM_DRAW);
 
 
     //Tell OpenGL how to set fragment shader input (for particles)
@@ -161,12 +162,19 @@ int main(int argc, char* args[]) {
         if (dt > .1) dt = .1; //Have some max dt
         lastTime = SDL_GetTicks() / 1000.f;
 
-        update(dt, ebo);
+        update(dt);
 
         SDL_GL_SwapWindow(window); //Double buffering
     }
 
     //Clean Up
+    glDeleteProgram(shaderProgram);
+    glDeleteShader(fragmentShader);
+    glDeleteShader(vertexShader);
+
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
 
     SDL_GL_DeleteContext(context);
     SDL_Quit();
@@ -177,13 +185,18 @@ void init() {
     screen_width = 800;
     screen_height = 600;
 
-    cloth = Cloth();
-    index = cloth.index();
+    cam_loc = glm::vec3(20.f, 20.f, 1.8f);
+    look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+    up = glm::vec3(0.0f, 0.0f, 1.0f);
+
+    cloth = Cloth(30, 30, -9.8f, 0.5f, 5.0f, 10.0f, 10.0f);
+    vertices = cloth.vertex_buffer();
+    indices = cloth.index();
+
 }
 
-void update(float dt, GLuint ebo) {
+void update(float dt) {
     set_camera();
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     draw_cloth();
     return;
 }
@@ -194,7 +207,7 @@ void draw_cloth() {
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
     glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
-    glDrawElements(GL_TRIANGLES, index.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
+    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
 }
 
 void set_camera() {
