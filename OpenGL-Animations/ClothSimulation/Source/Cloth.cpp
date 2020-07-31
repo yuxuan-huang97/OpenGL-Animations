@@ -32,8 +32,8 @@ Cloth::Cloth(int l, int w, float g, float len, float m, float k_p, float kv_p) {
 void Cloth::init() {
 	glm::vec3 upperleft((length - 1) * restlen / 2.0f, 0.0f, (width - 1) * restlen); //coordinate of the upper left corner
 
-	for (int i = 0; i < width; i++) {
-		for (int j = 0; j < length; j++) {
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < width; j++) {
 			pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y, upperleft.z - j * restlen));
 			vel.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
 		}
