@@ -20,7 +20,7 @@ public:
 
 	Cloth(int length, int width, float gravity, float restlen, float mass, float k, float kv);
 
-	void update(float dt);
+	void update(float dt, int substep);
 
 	vector<float> vertex_buffer(); // return the positions of each vertex in vbo format
 	vector<int> index(); // return the index buffer of the cloth

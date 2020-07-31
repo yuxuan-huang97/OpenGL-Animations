@@ -67,6 +67,62 @@ vector<int> Cloth::index() {
 	return index_buffer;
 }
 
-void Cloth::update(float dt) {
-	return;
+void Cloth::update(float total_dt, int substep) {
+	vector<glm::vec3> vforce; // forces in the vertical strings
+
+	// compute forces
+	float stringF; // elastic force in the string
+	float dampF; // damping force in the string
+
+	glm::vec3 delta_p;
+	float v1, v2;
+
+	float dt = total_dt / substep;
+	
+	for (int step = 0; step < substep; step++) {
+		// vertical
+		for (int i = 0; i < length; i++) {
+			for (int j = 0; j < width - 1; j++) {
+				delta_p = pos[i * width + j + 1] - pos[i * width + j];
+				float len = glm::length(delta_p); // len is the distance between two vertical conjunctions
+				stringF = -k * (len - restlen);
+				glm::normalize(delta_p); // delta_p is now the unit direction
+				v1 = glm::dot(vel[i * width + j], delta_p);
+				v2 = glm::dot(vel[i * width + j + 1], delta_p);
+				dampF = -kv * (v1 - v2);
+
+				vforce.push_back((stringF + dampF) * delta_p);
+			}
+		}
+
+		// horizontal
+
+		// Eulerian integration
+		for (int i = 0; i < length; i++) { // for each conjunctions
+			for (int j = 0; j < width; j++) {
+				//if ((i == 0 && j == 0) || (i == length - 1 && j == 0)) continue; // exclude the pins
+				if (j == 0) continue; // exclude the pins
+				// compute the acceleration
+				glm::vec3 acc(0.0f);
+				// force from upper string
+				if (j > 0) {
+					acc += vforce[i * (width - 1) + j - 1];
+				}
+				// force from lower string
+				if (j < width - 1) {
+					acc -= vforce[i * (width - 1) + j];
+				}
+				// convert force to acceleration
+				acc = acc * 0.5f / mass;
+				acc.z += gravity;
+				// update speed and position
+				vel[i * width + j] += acc * dt;
+				pos[i * width + j] += vel[i * width + j] * dt;
+
+			}
+		}
+
+		// collision detection
+	}
+
 }

@@ -41,7 +41,7 @@ vector<float> vertices;
 vector<int> indices;
 
 void init();
-void update(float dt);
+void update(float dt, GLuint vbo);
 void draw_cloth();
 void set_camera();
 
@@ -119,7 +119,7 @@ int main(int argc, char* args[]) {
     glGenBuffers(1, &vbo);  //Create 1 buffer called vbo
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW); //upload vertices to vbo
+    //glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW); //upload vertices to vbo
     //GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW = geometry changes infrequently
     //GL_STREAM_DRAW = geom. changes frequently.  This effects which types of GPU memory is used
 
@@ -151,18 +151,19 @@ int main(int argc, char* args[]) {
           //Scancode referes to a keyboard position, keycode referes to the letter (e.g., EU keyboards)
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
                 quit = true; //Exit event loop
-            move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
+            //move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
         }
-        bound_rotate(window, cam_loc, look_at, 0.01f);
+        //bound_rotate(window, cam_loc, look_at, 0.01f);
 
         // Clear the screen to default color
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        dt = (SDL_GetTicks() / 1000.f) - lastTime;
         if (dt > .1) dt = .1; //Have some max dt
         lastTime = SDL_GetTicks() / 1000.f;
 
-        update(dt);
+        update(dt, vbo);
 
         SDL_GL_SwapWindow(window); //Double buffering
     }
@@ -185,20 +186,22 @@ void init() {
     screen_width = 800;
     screen_height = 600;
 
-    cam_loc = glm::vec3(20.f, 20.f, 1.8f);
-    look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+    cam_loc = glm::vec3(20.f, 20.f, 20.0f);
+    look_at = glm::vec3(0.0f, 0.0f, 5.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    cloth = Cloth(30, 30, -9.8f, 0.5f, 5.0f, 10.0f, 10.0f);
-    vertices = cloth.vertex_buffer();
+    cloth = Cloth(30, 10, -9.8f, 0.5f, 1.0f, 10000.0f, 1000.0f);
+    //vertices = cloth.vertex_buffer();
     indices = cloth.index();
 
 }
 
-void update(float dt) {
+void update(float dt, GLuint vbo) {
     set_camera();
+    //cloth.update(dt, 30);
+    vertices = cloth.vertex_buffer();
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW);
     draw_cloth();
-    return;
 }
 
 void draw_cloth() {
@@ -219,3 +222,5 @@ void set_camera() {
     glm::mat4 view = glm::lookAt(cam_loc, look_at, up); // camera location, look at point, up direction
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 }
+
+//dt = 0
