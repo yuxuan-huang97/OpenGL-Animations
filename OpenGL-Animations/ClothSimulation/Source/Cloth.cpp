@@ -80,18 +80,27 @@ void Cloth::update(float total_dt, int substep) {
 	float dt = total_dt / substep;
 	
 	for (int step = 0; step < substep; step++) {
+		vforce.clear();
 		// vertical
 		for (int i = 0; i < length; i++) {
 			for (int j = 0; j < width - 1; j++) {
 				delta_p = pos[i * width + j + 1] - pos[i * width + j];
 				float len = glm::length(delta_p); // len is the distance between two vertical conjunctions
 				stringF = -k * (len - restlen);
-				glm::normalize(delta_p); // delta_p is now the unit direction
+
+				//printf("len = %f\n", len);
+
+				delta_p = glm::normalize(delta_p); // delta_p is now the unit direction
 				v1 = glm::dot(vel[i * width + j], delta_p);
 				v2 = glm::dot(vel[i * width + j + 1], delta_p);
-				dampF = -kv * (v1 - v2);
+				dampF = kv * (v1 - v2);
 
 				vforce.push_back((stringF + dampF) * delta_p);
+				//printf("vforce = %f\n", ((stringF + dampF) * delta_p).z);
+
+				//if (len - 1.67 < 0.01 && len - 1.67 > 0) {
+				//	printf("stop\n");
+				//}
 			}
 		}
 
@@ -115,10 +124,12 @@ void Cloth::update(float total_dt, int substep) {
 				// convert force to acceleration
 				acc = acc * 0.5f / mass;
 				acc.z += gravity;
+
+				//printf("acc = %f\n", acc.z);
+
 				// update speed and position
 				vel[i * width + j] += acc * dt;
 				pos[i * width + j] += vel[i * width + j] * dt;
-
 			}
 		}
 

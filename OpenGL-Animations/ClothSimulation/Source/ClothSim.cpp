@@ -151,9 +151,9 @@ int main(int argc, char* args[]) {
           //Scancode referes to a keyboard position, keycode referes to the letter (e.g., EU keyboards)
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
                 quit = true; //Exit event loop
-            //move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
+            move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
         }
-        //bound_rotate(window, cam_loc, look_at, 0.01f);
+        bound_rotate(window, cam_loc, look_at, 0.01f);
 
         // Clear the screen to default color
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
@@ -190,15 +190,14 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 5.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    cloth = Cloth(30, 10, -9.8f, 0.5f, 1.0f, 10000.0f, 1000.0f);
-    //vertices = cloth.vertex_buffer();
+    cloth = Cloth(30, 30, -9.8f, 0.5f, 1.0f, 10000.0f, 200.0f);
     indices = cloth.index();
 
 }
 
 void update(float dt, GLuint vbo) {
     set_camera();
-    //cloth.update(dt, 30);
+    cloth.update(dt, 30);
     vertices = cloth.vertex_buffer();
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW);
     draw_cloth();
