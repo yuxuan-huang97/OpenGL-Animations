@@ -165,6 +165,8 @@ int main(int argc, char* args[]) {
 
         update(dt, vbo);
 
+        printf("FPS: %i \n", int(1 / dt));
+
         SDL_GL_SwapWindow(window); //Double buffering
     }
 
@@ -186,18 +188,19 @@ void init() {
     screen_width = 800;
     screen_height = 600;
 
-    cam_loc = glm::vec3(20.f, 20.f, 20.0f);
+    cam_loc = glm::vec3(20.0f, 20.0f, 20.0f);
     look_at = glm::vec3(0.0f, 0.0f, 5.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    cloth = Cloth(30, 30, -9.8f, 0.5f, 1.0f, 10000.0f, 200.0f);
+    cloth = Cloth(30, 30, -20.0f, 0.5f, 1.0f, 15000.0f, 500.0f);
+    //cloth = Cloth(30, 30, -10.0f, 5.0f, 5.0f, 1000.0f, 100.0f);
     indices = cloth.index();
 
 }
 
 void update(float dt, GLuint vbo) {
     set_camera();
-    cloth.update(dt, 30);
+    cloth.update(dt, 80);
     vertices = cloth.vertex_buffer();
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW);
     draw_cloth();
@@ -214,7 +217,7 @@ void draw_cloth() {
 
 void set_camera() {
     //Set the Camera view paramters (FOV, aspect ratio, etc.)
-    glm::mat4 proj = glm::perspective(3.14f / 4, aspect, .1f, 100.0f); //FOV, aspect, near, far
+    glm::mat4 proj = glm::perspective(3.14f / 4, aspect, .1f, 1000.0f); //FOV, aspect, near, far
     glUniformMatrix4fv(uniProj, 1, GL_FALSE, glm::value_ptr(proj));
 
     //Set the Camera Position and Orientation

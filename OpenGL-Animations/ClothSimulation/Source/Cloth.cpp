@@ -34,7 +34,8 @@ void Cloth::init() {
 
 	for (int i = 0; i < length; i++) {
 		for (int j = 0; j < width; j++) {
-			pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y, upperleft.z - j * restlen));
+			//pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y, upperleft.z - j * restlen));
+			pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y + j * restlen, upperleft.z));
 			vel.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
 		}
 	}
@@ -69,6 +70,7 @@ vector<int> Cloth::index() {
 
 void Cloth::update(float total_dt, int substep) {
 	vector<glm::vec3> vforce; // forces in the vertical strings
+	vector<glm::vec3> hforce; // forces in horizontal strings
 
 	// compute forces
 	float stringF; // elastic force in the string
@@ -81,14 +83,14 @@ void Cloth::update(float total_dt, int substep) {
 	
 	for (int step = 0; step < substep; step++) {
 		vforce.clear();
+		hforce.clear();
 		// vertical
+		#pragma omp parallel for
 		for (int i = 0; i < length; i++) {
 			for (int j = 0; j < width - 1; j++) {
 				delta_p = pos[i * width + j + 1] - pos[i * width + j];
 				float len = glm::length(delta_p); // len is the distance between two vertical conjunctions
 				stringF = -k * (len - restlen);
-
-				//printf("len = %f\n", len);
 
 				delta_p = glm::normalize(delta_p); // delta_p is now the unit direction
 				v1 = glm::dot(vel[i * width + j], delta_p);
@@ -96,21 +98,32 @@ void Cloth::update(float total_dt, int substep) {
 				dampF = kv * (v1 - v2);
 
 				vforce.push_back((stringF + dampF) * delta_p);
-				//printf("vforce = %f\n", ((stringF + dampF) * delta_p).z);
-
-				//if (len - 1.67 < 0.01 && len - 1.67 > 0) {
-				//	printf("stop\n");
-				//}
 			}
 		}
 
 		// horizontal
+		#pragma omp parallel for
+		for (int i = 0; i < length - 1; i++) {
+			for (int j = 0; j < width; j++) {
+				delta_p = pos[(i + 1) * width + j] - pos[i * width + j];
+				float len = glm::length(delta_p); // len is the distance between two vertical conjunctions
+				stringF = -k * (len - restlen);
 
+				delta_p = glm::normalize(delta_p); // delta_p is now the unit direction
+				v1 = glm::dot(vel[i * width + j], delta_p);
+				v2 = glm::dot(vel[(i + 1) * width + j], delta_p);
+				dampF = kv * (v1 - v2);
+
+				hforce.push_back((stringF + dampF) * delta_p);
+				//hforce.push_back((stringF) * delta_p);
+			}
+		}
 		// Eulerian integration
+		#pragma omp parallel for
 		for (int i = 0; i < length; i++) { // for each conjunctions
 			for (int j = 0; j < width; j++) {
-				//if ((i == 0 && j == 0) || (i == length - 1 && j == 0)) continue; // exclude the pins
-				if (j == 0) continue; // exclude the pins
+				if ((i == 0 && j == 0) || (i == length/2.0 && j == 0) || (i == length - 1 && j == 0)) continue; // exclude the pins
+				//if (j == 0) continue; // exclude the pins
 				// compute the acceleration
 				glm::vec3 acc(0.0f);
 				// force from upper string
@@ -120,6 +133,14 @@ void Cloth::update(float total_dt, int substep) {
 				// force from lower string
 				if (j < width - 1) {
 					acc -= vforce[i * (width - 1) + j];
+				}
+				// force from left string
+				if (i > 0) {
+					acc += hforce[(i - 1) * width + j];
+				}
+				// force from right string
+				if (i < length - 1) {
+					acc -= hforce[i * width + j];
 				}
 				// convert force to acceleration
 				acc = acc * 0.5f / mass;
