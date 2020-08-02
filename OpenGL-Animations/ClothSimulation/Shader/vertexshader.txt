@@ -1,7 +1,6 @@
 #version 330 core
 in vec3 position;
-//in vec3 inNormal;
-const vec3 inNormal = vec3(0,1,0);
+in vec3 inNormal;
 const vec3 inLightDir = normalize(vec3(0,1,1));
 out vec3 Color;
 out vec3 normal;
