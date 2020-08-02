@@ -70,8 +70,8 @@ vector<int> Cloth::index() {
 
 vector<float> Cloth::normal() {
 	vector<float> normal;
-	for (int i = 0; i < length - 1; i++) {
-		for (int j = 0; j < width - 1; j++) {
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < width; j++) {
 			normal.push_back(0.0f);
 			normal.push_back(1.0f);
 			normal.push_back(0.0f);
