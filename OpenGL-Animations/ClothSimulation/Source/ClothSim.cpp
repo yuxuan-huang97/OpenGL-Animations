@@ -42,12 +42,18 @@ vector<float> normals;
 vector<int> indices;
 
 // sphere data
+glm::vec3 sph_loc, sph_color;
+float sph_rad;
 int sph_vert; // number of verts for sphere
+vector<float> svertices;
+vector<float> suvs;
+vector<float> snormals;
 
 GLuint shaderProgram;
 void init();
-void update(float dt, GLuint vbo[]);
+void update(float dt, GLuint vbo[], GLuint vbo1[]);
 void draw_cloth();
+void draw_sphere();
 void set_camera();
 
 int main(int argc, char* args[]) {
@@ -112,13 +118,10 @@ int main(int argc, char* args[]) {
     uniProj = glGetUniformLocation(shaderProgram, "proj");
     uniColor = glGetUniformLocation(shaderProgram, "inColor");
     //============================ Model Setup =======================================
-    /*
-    std::vector< float > vertices;
-    std::vector< float > uvs; // Won't be used at the moment.
-    std::vector< float > normals;
-    loadobj("../ClothSimulation/Assets/sphere.obj", vertices, uvs, normals);
-    sph_vert = vertices.size();
-    */
+    
+    loadobj("../ClothSimulation/Assets/sphere.obj", svertices, suvs, snormals);
+    sph_vert = svertices.size();
+    
     //============================ Buffer Setup ======================================
 
     //Build a Vertex Array Object. This stores the VBO and attribute mappings in one object
@@ -127,13 +130,10 @@ int main(int argc, char* args[]) {
     glBindVertexArray(vao); //Bind the above created VAO to the current context
 
     //Allocate memory on the graphics card to store geometry (vertex buffer object)
-    GLuint vbo[2];
+    GLuint vbo[2], vbo1[2];
     glGenBuffers(2, vbo);  //Create 1 buffer called vbo
+    glGenBuffers(2, vbo1);
 
-    //glBindBuffer(GL_ARRAY_BUFFER, vbo); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-    //glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW); //upload vertices to vbo
-    //GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW = geometry changes infrequently
-    //GL_STREAM_DRAW = geom. changes frequently.  This effects which types of GPU memory is used
 
     GLuint ebo; // Element buffer object
     glGenBuffers(1, &ebo);
@@ -168,7 +168,7 @@ int main(int argc, char* args[]) {
         lastTime = SDL_GetTicks() / 1000.f;
 
         //update(dt, vbo);
-        update(0.035, vbo);
+        update(0.035, vbo, vbo1);
 
         printf("FPS: %i \n", int(1 / dt));
 
@@ -198,17 +198,20 @@ void init() {
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
     cloth = Cloth(30, 30, -20.0f, 0.5f, 1.0f, 15000.0f, 500.0f);
-    //cloth = Cloth(30, 30, -10.0f, 5.0f, 5.0f, 1000.0f, 100.0f);
     indices = cloth.index();
 
+    sph_loc = glm::vec3(0.0f, 0.0f, 5.0f);
+    sph_rad = 2.5f;
+    sph_color = glm::vec3(1.0f, 1.0f, 0.0f);
 }
 
-void update(float dt, GLuint vbo[]) {
-    set_camera();
+void update(float dt, GLuint vbo[], GLuint vbo1[]) {
+    
     cloth.update(dt, 40);
-
     vertices = cloth.vertex_buffer();
     normals = cloth.normal();
+
+    set_camera();
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo[0]); // vertex positions
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW);
@@ -216,13 +219,33 @@ void update(float dt, GLuint vbo[]) {
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(posAttrib);
 
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[1]); // vertex normals
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), &normals[0], GL_STREAM_DRAW);
     GLint normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
     glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(normalAttrib);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo[1]); // vertex normals
-    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), &normals[0], GL_STREAM_DRAW);
 
     draw_cloth();
+
+
+    set_camera();
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo1[0]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    glBufferData(GL_ARRAY_BUFFER, svertices.size() * sizeof(float), &svertices[0], GL_STATIC_DRAW); //upload vertices to vbo
+
+    posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(posAttrib);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo1[1]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    glBufferData(GL_ARRAY_BUFFER, snormals.size() * sizeof(float), &snormals[0], GL_STATIC_DRAW); //upload vertices to vbo
+
+    normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
+    glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(normalAttrib);
+
+    draw_sphere();
+
 }
 
 void draw_cloth() {
@@ -234,6 +257,15 @@ void draw_cloth() {
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
 }
 
+void draw_sphere() {
+    glm::mat4 model = glm::mat4();
+    model = glm::translate(model, sph_loc);
+    model = glm::scale(model, glm::vec3(sph_rad));
+    glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+    glUniform3f(uniColor, sph_color.r, sph_color.g, sph_color.b);
+    glDrawArrays(GL_TRIANGLES, 0, sph_vert / 3); //(Primitives, starting index, Number of vertices)
+}
+
 void set_camera() {
     //Set the Camera view paramters (FOV, aspect ratio, etc.)
     glm::mat4 proj = glm::perspective(3.14f / 4, aspect, .1f, 1000.0f); //FOV, aspect, near, far
@@ -243,5 +275,3 @@ void set_camera() {
     glm::mat4 view = glm::lookAt(cam_loc, look_at, up); // camera location, look at point, up direction
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 }
-
-//dt = 0
