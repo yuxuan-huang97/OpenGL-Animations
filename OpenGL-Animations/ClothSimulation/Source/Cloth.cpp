@@ -80,7 +80,7 @@ vector<float> Cloth::normal() {
 	return normal;
 }
 
-void Cloth::update(float total_dt, int substep) {
+void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad) {
 	vector<glm::vec3> vforce; // forces in the vertical strings
 	vector<glm::vec3> hforce; // forces in horizontal strings
 
@@ -130,7 +130,8 @@ void Cloth::update(float total_dt, int substep) {
 				//hforce.push_back((stringF) * delta_p);
 			}
 		}
-		// Eulerian integration
+
+		// Eulerian integration & collision detection
 		#pragma omp parallel for
 		for (int i = 0; i < length; i++) { // for each conjunctions
 			for (int j = 0; j < width; j++) {
@@ -161,15 +162,24 @@ void Cloth::update(float total_dt, int substep) {
 				acc = acc * 0.5f / mass;
 				acc.z += gravity;
 
-				//printf("acc = %f\n", acc.z);
-
 				// update speed and position
 				vel[i * width + j] += acc * dt;
 				pos[i * width + j] += vel[i * width + j] * dt;
+
+				// collision detection
+				glm::vec3 n = pos[i * width + j] - obs_loc;
+				if (glm::length(n) <= obs_rad + 0.1) { // collided
+
+					float alpha = 0.1f;
+					n = glm::normalize(n);
+					pos[i * width + j] = obs_loc + (obs_rad + 0.2f) * n;
+
+					float vns = glm::dot(vel[i * width + j], n); // velocity parallel to normal
+					glm::vec3 vtemp = -(1 + alpha) * vns * n;
+					vel[i * width + j] += vtemp;
+				}
 			}
 		}
-
-		// collision detection
 
 	}
 

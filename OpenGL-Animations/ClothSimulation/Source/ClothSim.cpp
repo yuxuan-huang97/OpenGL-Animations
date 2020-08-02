@@ -49,6 +49,10 @@ vector<float> svertices;
 vector<float> suvs;
 vector<float> snormals;
 
+// user interaction variables
+bool grabbed;
+float relative_dis, relativeX, relativeY;
+
 GLuint shaderProgram;
 void init();
 void update(float dt, GLuint vbo[], GLuint vbo1[]);
@@ -135,6 +139,21 @@ int main(int argc, char* args[]) {
     glGenBuffers(2, vbo1);
 
 
+    glBindBuffer(GL_ARRAY_BUFFER, vbo1[0]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    glBufferData(GL_ARRAY_BUFFER, svertices.size() * sizeof(float), &svertices[0], GL_STATIC_DRAW); //upload vertices to vbo
+
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(posAttrib);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo1[1]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    glBufferData(GL_ARRAY_BUFFER, snormals.size() * sizeof(float), &snormals[0], GL_STATIC_DRAW); //upload vertices to vbo
+
+    GLint normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
+    glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(normalAttrib);
+
+
     GLuint ebo; // Element buffer object
     glGenBuffers(1, &ebo);
 
@@ -156,6 +175,7 @@ int main(int argc, char* args[]) {
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
                 quit = true; //Exit event loop
             move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
+            grab_obj(windowEvent, cam_loc, look_at, sph_loc, relative_dis, relativeX, relativeY, grabbed);
         }
         bound_rotate(window, cam_loc, look_at, 0.01f);
 
@@ -167,10 +187,10 @@ int main(int argc, char* args[]) {
         if (dt > .1) dt = .1; //Have some max dt
         lastTime = SDL_GetTicks() / 1000.f;
 
-        //update(dt, vbo);
+        //update(dt, vbo, vbo1);
         update(0.035, vbo, vbo1);
 
-        printf("FPS: %i \n", int(1 / dt));
+        //printf("FPS: %i \n", int(1 / dt));
 
         SDL_GL_SwapWindow(window); //Double buffering
     }
@@ -193,23 +213,32 @@ void init() {
     screen_width = 800;
     screen_height = 600;
 
-    cam_loc = glm::vec3(20.0f, 20.0f, 20.0f);
+    cam_loc = glm::vec3(30.0f, 30.0f, 30.0f);
     look_at = glm::vec3(0.0f, 0.0f, 5.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    cloth = Cloth(30, 30, -20.0f, 0.5f, 1.0f, 15000.0f, 500.0f);
+    cloth = Cloth(30, 30, -20.0f, 0.5f, 1.0f, 15000.0f, 800.0f);
     indices = cloth.index();
 
-    sph_loc = glm::vec3(0.0f, 0.0f, 5.0f);
+    sph_loc = glm::vec3(0.0f, 10.0f, 10.0f);
     sph_rad = 2.5f;
     sph_color = glm::vec3(1.0f, 1.0f, 0.0f);
+
+    grabbed = false;
 }
 
 void update(float dt, GLuint vbo[], GLuint vbo1[]) {
     
-    cloth.update(dt, 40);
+    cloth.update(dt, 50, sph_loc, sph_rad);
     vertices = cloth.vertex_buffer();
     normals = cloth.normal();
+
+    if (grabbed) {
+        sph_loc = glm::normalize(look_at - cam_loc);
+        rotate(-relativeX, relativeY, 1.0f, sph_loc);
+        sph_loc *= relative_dis;
+        sph_loc += cam_loc;
+    }
 
     set_camera();
 
@@ -230,17 +259,11 @@ void update(float dt, GLuint vbo[], GLuint vbo1[]) {
 
     set_camera();
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo1[0]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-    glBufferData(GL_ARRAY_BUFFER, svertices.size() * sizeof(float), &svertices[0], GL_STATIC_DRAW); //upload vertices to vbo
-
-    posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glBindBuffer(GL_ARRAY_BUFFER, vbo1[0]);
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(posAttrib);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo1[1]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-    glBufferData(GL_ARRAY_BUFFER, snormals.size() * sizeof(float), &snormals[0], GL_STATIC_DRAW); //upload vertices to vbo
-
-    normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
+    glBindBuffer(GL_ARRAY_BUFFER, vbo1[1]);
     glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(normalAttrib);
 

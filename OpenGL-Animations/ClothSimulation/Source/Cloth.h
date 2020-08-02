@@ -20,7 +20,7 @@ public:
 
 	Cloth(int length, int width, float gravity, float restlen, float mass, float k, float kv);
 
-	void update(float dt, int substep);
+	void update(float dt, int substep, glm::vec3 obs_loc, float obs_rad);
 
 	vector<float> vertex_buffer(); // return the positions of each vertex in vbo format
 	vector<float> normal(); // returns the normals of each vertex
