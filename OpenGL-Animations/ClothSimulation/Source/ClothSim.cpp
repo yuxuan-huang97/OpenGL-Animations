@@ -163,7 +163,8 @@ int main(int argc, char* args[]) {
         if (dt > .1) dt = .1; //Have some max dt
         lastTime = SDL_GetTicks() / 1000.f;
 
-        update(dt, vbo);
+        //update(dt, vbo);
+        update(0.035, vbo);
 
         printf("FPS: %i \n", int(1 / dt));
 
