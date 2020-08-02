@@ -68,6 +68,18 @@ vector<int> Cloth::index() {
 	return index_buffer;
 }
 
+vector<float> Cloth::normal() {
+	vector<float> normal;
+	for (int i = 0; i < length - 1; i++) {
+		for (int j = 0; j < width - 1; j++) {
+			normal.push_back(0.0f);
+			normal.push_back(1.0f);
+			normal.push_back(0.0f);
+		}
+	}
+	return normal;
+}
+
 void Cloth::update(float total_dt, int substep) {
 	vector<glm::vec3> vforce; // forces in the vertical strings
 	vector<glm::vec3> hforce; // forces in horizontal strings
@@ -122,7 +134,10 @@ void Cloth::update(float total_dt, int substep) {
 		#pragma omp parallel for
 		for (int i = 0; i < length; i++) { // for each conjunctions
 			for (int j = 0; j < width; j++) {
-				if ((i == 0 && j == 0) || (i == length/2.0 && j == 0) || (i == length - 1 && j == 0)) continue; // exclude the pins
+				//if ((i == 0 && j == 0) || (i == length/4.0 && j == 0) || (i == length - 1 && j == 0)) continue; // exclude the pins
+				if (j == 0) {
+					if (i == 0 || i == length/3.0 || i == 2.0*length/3.0 || i == length - 1) continue; // exclude the pins
+				}
 				//if (j == 0) continue; // exclude the pins
 				// compute the acceleration
 				glm::vec3 acc(0.0f);
@@ -155,6 +170,7 @@ void Cloth::update(float total_dt, int substep) {
 		}
 
 		// collision detection
+
 	}
 
 }

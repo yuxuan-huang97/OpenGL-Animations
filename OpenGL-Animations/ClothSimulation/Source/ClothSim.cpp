@@ -38,10 +38,15 @@ GLint uniModel, uniView, uniProj, uniColor;
 // cloth specs
 Cloth cloth;
 vector<float> vertices;
+vector<float> normals;
 vector<int> indices;
 
+// sphere data
+int sph_vert; // number of verts for sphere
+
+GLuint shaderProgram;
 void init();
-void update(float dt, GLuint vbo);
+void update(float dt, GLuint vbo[]);
 void draw_cloth();
 void set_camera();
 
@@ -94,7 +99,7 @@ int main(int argc, char* args[]) {
 
     //Join the vertex and fragment shaders together into one program
 
-    GLuint shaderProgram = glCreateProgram();
+    shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glBindFragDataLocation(shaderProgram, 0, "outColor"); // set output
@@ -106,7 +111,14 @@ int main(int argc, char* args[]) {
     uniView = glGetUniformLocation(shaderProgram, "view");
     uniProj = glGetUniformLocation(shaderProgram, "proj");
     uniColor = glGetUniformLocation(shaderProgram, "inColor");
-
+    //============================ Model Setup =======================================
+    /*
+    std::vector< float > vertices;
+    std::vector< float > uvs; // Won't be used at the moment.
+    std::vector< float > normals;
+    loadobj("../ClothSimulation/Assets/sphere.obj", vertices, uvs, normals);
+    sph_vert = vertices.size();
+    */
     //============================ Buffer Setup ======================================
 
     //Build a Vertex Array Object. This stores the VBO and attribute mappings in one object
@@ -115,10 +127,10 @@ int main(int argc, char* args[]) {
     glBindVertexArray(vao); //Bind the above created VAO to the current context
 
     //Allocate memory on the graphics card to store geometry (vertex buffer object)
-    GLuint vbo;
-    glGenBuffers(1, &vbo);  //Create 1 buffer called vbo
+    GLuint vbo[2];
+    glGenBuffers(2, vbo);  //Create 1 buffer called vbo
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    //glBindBuffer(GL_ARRAY_BUFFER, vbo); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
     //glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW); //upload vertices to vbo
     //GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW = geometry changes infrequently
     //GL_STREAM_DRAW = geom. changes frequently.  This effects which types of GPU memory is used
@@ -128,14 +140,6 @@ int main(int argc, char* args[]) {
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), &indices[0], GL_STREAM_DRAW);
-
-
-    //Tell OpenGL how to set fragment shader input (for particles)
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    //Attribute, vals/attrib., type, normalized?, stride, offset
-    //Binds to VBO current GL_ARRAY_BUFFER 
-    glEnableVertexAttribArray(posAttrib);
 
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
@@ -156,7 +160,7 @@ int main(int argc, char* args[]) {
         bound_rotate(window, cam_loc, look_at, 0.01f);
 
         // Clear the screen to default color
-        glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         dt = (SDL_GetTicks() / 1000.f) - lastTime;
@@ -177,7 +181,7 @@ int main(int argc, char* args[]) {
     glDeleteShader(vertexShader);
 
     glDeleteBuffers(1, &ebo);
-    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, vbo);
     glDeleteVertexArrays(1, &vao);
 
     SDL_GL_DeleteContext(context);
@@ -199,11 +203,25 @@ void init() {
 
 }
 
-void update(float dt, GLuint vbo) {
+void update(float dt, GLuint vbo[]) {
     set_camera();
-    cloth.update(dt, 80);
+    cloth.update(dt, 40);
+
     vertices = cloth.vertex_buffer();
+    normals = cloth.normal();
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[0]); // vertex positions
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW);
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(posAttrib);
+
+    GLint normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
+    glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(normalAttrib);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[1]); // vertex normals
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), &normals[0], GL_STREAM_DRAW);
+
     draw_cloth();
 }
 
@@ -212,7 +230,7 @@ void draw_cloth() {
     model = glm::translate(model, glm::vec3(0.0f));
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, 1.0f, 0.0f, 0.0f);
+    glUniform3f(uniColor, 1.0f, 1.0f, 1.0f);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
 }
 

@@ -23,6 +23,7 @@ public:
 	void update(float dt, int substep);
 
 	vector<float> vertex_buffer(); // return the positions of each vertex in vbo format
+	vector<float> normal(); // returns the normals of each vertex
 	vector<int> index(); // return the index buffer of the cloth
 
 private:
