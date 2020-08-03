@@ -174,7 +174,7 @@ int main(int argc, char* args[]) {
           //Scancode referes to a keyboard position, keycode referes to the letter (e.g., EU keyboards)
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
                 quit = true; //Exit event loop
-            move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
+            move_camera(windowEvent, cam_loc, look_at, up, 0.3f, 0.3f);
             grab_obj(windowEvent, cam_loc, look_at, sph_loc, relative_dis, relativeX, relativeY, grabbed);
         }
         bound_rotate(window, cam_loc, look_at, 0.01f);
@@ -218,7 +218,7 @@ void init() {
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
     cloth = Cloth(30, 30, -20.0f, 0.5f, 1.0f, 15000.0f, 800.0f);
-    indices = cloth.index();
+    indices = cloth.get_index();
 
     sph_loc = glm::vec3(0.0f, 10.0f, 10.0f);
     sph_rad = 2.5f;
@@ -229,9 +229,9 @@ void init() {
 
 void update(float dt, GLuint vbo[], GLuint vbo1[]) {
     
-    cloth.update(dt, 50, sph_loc, sph_rad);
+    cloth.update(dt, 70, sph_loc, sph_rad);
     vertices = cloth.vertex_buffer();
-    normals = cloth.normal();
+    normals = cloth.get_normal();
 
     if (grabbed) {
         sph_loc = glm::normalize(look_at - cam_loc);

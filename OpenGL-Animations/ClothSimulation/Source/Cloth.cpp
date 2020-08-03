@@ -36,9 +36,13 @@ void Cloth::init() {
 		for (int j = 0; j < width; j++) {
 			//pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y, upperleft.z - j * restlen));
 			pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y + j * restlen, upperleft.z));
+			normal.push_back(glm::vec3(0.0f));
 			vel.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
 		}
 	}
+
+	wind_v = glm::vec3(0.0f); // no wind initially
+	//wind_v = glm::vec3(-10.0f, -10.0f, 0.0f);
 }
 
 vector<float> Cloth::vertex_buffer() {
@@ -51,7 +55,7 @@ vector<float> Cloth::vertex_buffer() {
 	return vertex_buffer;
 }
 
-vector<int> Cloth::index() {
+vector<int> Cloth::get_index() {
 	vector<int> index_buffer;
 	for (int i = 0; i < length - 1; i++) {
 		for (int j = 0; j < width - 1; j++) {
@@ -68,21 +72,33 @@ vector<int> Cloth::index() {
 	return index_buffer;
 }
 
-vector<float> Cloth::normal() {
-	vector<float> normal;
+vector<float> Cloth::get_normal() {
+	vector<float> result;
+	glm::vec3 n;
 	for (int i = 0; i < length; i++) {
 		for (int j = 0; j < width; j++) {
-			normal.push_back(0.0f);
-			normal.push_back(1.0f);
-			normal.push_back(0.0f);
+			/*
+			result.push_back(0.0f);
+			result.push_back(1.0f);
+			result.push_back(0.0f);
+			*/
+			n = glm::normalize(normal[i * width + j]);
+			result.push_back(n.x);
+			result.push_back(n.y);
+			result.push_back(n.z);
 		}
 	}
-	return normal;
+	return result;
 }
 
 void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad) {
+
 	vector<glm::vec3> vforce; // forces in the vertical strings
 	vector<glm::vec3> hforce; // forces in horizontal strings
+	vector<glm::vec3> gforce; // drag force
+	#pragma omp parallel for
+	for (int i = 0; i < width * length; i++) gforce.push_back(glm::vec3(0.0f));
+	bool update_normals = false;
 
 	// compute forces
 	float stringF; // elastic force in the string
@@ -94,8 +110,14 @@ void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad
 	float dt = total_dt / substep;
 	
 	for (int step = 0; step < substep; step++) {
+
+		// reset all the forces (& normals)
 		vforce.clear();
 		hforce.clear();
+		for (int i = 0; i < width * length; i++) gforce[i] = glm::vec3(0.0f);
+
+		if (step == substep - 1) update_normals = true; // only update normals in the final substep
+
 		// vertical
 		#pragma omp parallel for
 		for (int i = 0; i < length; i++) {
@@ -131,17 +153,20 @@ void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad
 			}
 		}
 
+		// drag (& normal)
+		drag(gforce, update_normals);
+
 		// Eulerian integration & collision detection
 		#pragma omp parallel for
 		for (int i = 0; i < length; i++) { // for each conjunctions
 			for (int j = 0; j < width; j++) {
 				//if ((i == 0 && j == 0) || (i == length/4.0 && j == 0) || (i == length - 1 && j == 0)) continue; // exclude the pins
 				if (j == 0) {
-					if (i == 0 || i == length/3.0 || i == 2.0*length/3.0 || i == length - 1) continue; // exclude the pins
+					if (i == 0 || i == length/3 || i == 2*length/3 || i == length - 1) continue; // exclude the pins
 				}
-				//if (j == 0) continue; // exclude the pins
 				// compute the acceleration
 				glm::vec3 acc(0.0f);
+				// string force
 				// force from upper string
 				if (j > 0) {
 					acc += vforce[i * (width - 1) + j - 1];
@@ -160,6 +185,11 @@ void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad
 				}
 				// convert force to acceleration
 				acc = acc * 0.5f / mass;
+
+				// drag
+				acc += gforce[i * width + j] / mass;
+
+				// gravity
 				acc.z += gravity;
 
 				// update speed and position
@@ -184,3 +214,74 @@ void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad
 	}
 
 }
+
+void Cloth::drag(vector<glm::vec3>& gforce, bool comp_normal) {
+	float c = 1.5f;
+	if (comp_normal) { // if we need to update normals
+		#pragma omp parallel for
+		for (int i = 0; i < width * length; i++) { // we reset all the normals first
+			normal[i] = glm::vec3(0.0f);
+		}
+	}
+	#pragma omp parallel for
+	for (int i = 0; i < length - 1; i++) {
+		for (int j = 0; j < width - 1; j++) {
+
+			// find the indices
+			int ind0 = i * width + j;
+			int ind1 = i * width + j + 1;
+			int ind2 = (i + 1) * width + j + 1;
+			int ind3 = (i + 1) * width + j;
+
+			// compute average vel for triangles
+			glm::vec3 vtmp = vel[ind0] + vel[ind2];
+			glm::vec3 v0 = (vtmp + vel[ind1]) / 3.0f - wind_v; // average vel for the 1st triangle
+			glm::vec3 v1 = (vtmp + vel[ind3]) / 3.0f - wind_v; // ... for the 2nd triangle
+
+			// compute normal for triangles
+			vtmp = pos[ind2] - pos[ind0]; // diagonal vector
+			glm::vec3 n0 = glm::cross(pos[1] - pos[0], vtmp); // unnormalized normal
+			glm::vec3 n1 = glm::cross(vtmp, pos[3] - pos[0]);
+
+			/*
+			float a0 = glm::length(n0); // intermediate result of area
+			float a1 = glm::length(n1);
+			n0 /= a0; // normalized normal
+			n1 /= a1;
+			a0 /= 2.0f; // actual area of the triangle
+			a1 /= 2.0f;
+			a0 *= glm::dot(v0, n0) / glm::length(v0);
+			a1 *= glm::dot(v1, n1) / glm::length(v1);
+			*/
+
+			// compute the final force
+			glm::vec3 f0 = -0.5f * c * (glm::length(v0) * glm::dot(v0, n0) / (2.0f * glm::length(n0))) * n0; // force on each triangle
+			glm::vec3 f1 = -0.5f * c * (glm::length(v1) * glm::dot(v1, n1) / (2.0f * glm::length(n1))) * n1;
+			f0 /= 3.0f; // force per vertex
+			f1 /= 3.0f;
+			gforce[ind0] += f0;
+			gforce[ind1] += f0;
+			gforce[ind2] += f0;
+			gforce[ind0] += f1;
+			gforce[ind2] += f1;
+			gforce[ind3] += f1;
+
+			if (comp_normal) { // update the normals if we need to
+				n0 = glm::normalize(n0);
+				n1 = glm::normalize(n1);
+				normal[ind0] += n0; // no need to /3 because it has not been normalized anyway
+				normal[ind1] += n0; // we will normalize it in the get_normal() call
+				normal[ind2] += n0;
+				normal[ind0] += n1;
+				normal[ind2] += n1;
+				normal[ind3] += n1;
+			} 
+		}
+	}
+}
+
+/*
+There's really no need to compute normals at each substep
+because the intermediate results won't be drawn anyway
+updating at the final substep should suffice
+*/
