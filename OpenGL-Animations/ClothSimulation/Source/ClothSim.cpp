@@ -53,12 +53,17 @@ vector<float> snormals;
 bool grabbed;
 float relative_dis, relativeX, relativeY;
 
+// wind parameter
+glm::vec3 wind_dir;
+float windspeed;
+
 GLuint shaderProgram;
 void init();
 void update(float dt, GLuint vbo[], GLuint vbo1[]);
 void draw_cloth();
 void draw_sphere();
 void set_camera();
+void set_wind(SDL_Event event, Cloth &cloth);
 
 int main(int argc, char* args[]) {
 
@@ -174,6 +179,9 @@ int main(int argc, char* args[]) {
           //Scancode referes to a keyboard position, keycode referes to the letter (e.g., EU keyboards)
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
                 quit = true; //Exit event loop
+
+            set_wind(windowEvent, cloth);
+
             move_camera(windowEvent, cam_loc, look_at, up, 0.3f, 0.3f);
             grab_obj(windowEvent, cam_loc, look_at, sph_loc, relative_dis, relativeX, relativeY, grabbed);
         }
@@ -225,11 +233,14 @@ void init() {
     sph_color = glm::vec3(1.0f, 1.0f, 0.0f);
 
     grabbed = false;
+
+    wind_dir = glm::vec3(0.0f);
+    windspeed = 0.0f;
 }
 
 void update(float dt, GLuint vbo[], GLuint vbo1[]) {
     
-    cloth.update(dt, 70, sph_loc, sph_rad);
+    cloth.update(dt, 100, sph_loc, sph_rad);
     vertices = cloth.vertex_buffer();
     normals = cloth.get_normal();
 
@@ -298,3 +309,21 @@ void set_camera() {
     glm::mat4 view = glm::lookAt(cam_loc, look_at, up); // camera location, look at point, up direction
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 }
+
+void set_wind(SDL_Event event, Cloth& cloth) {
+    if (event.type == SDL_KEYUP) {
+        switch (event.key.keysym.sym) {
+        case SDLK_LEFT: wind_dir = glm::vec3(0.0f, -1.0f, 0.0f); break;
+        case SDLK_RIGHT: wind_dir = glm::vec3(-1.0f, 0.0f, 0.0f); break;
+        case SDLK_UP: windspeed += 1.0f; break;
+        case SDLK_DOWN: windspeed -= 1.0f; break;
+        case SDLK_0: windspeed = 0.0f; break;
+        default: break;
+        }
+        cloth.set_wind(wind_dir * windspeed);
+    }
+}
+
+/*
+Shading needs to be fixed
+*/
