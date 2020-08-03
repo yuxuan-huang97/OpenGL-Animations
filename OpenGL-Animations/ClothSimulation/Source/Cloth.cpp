@@ -34,7 +34,6 @@ void Cloth::init() {
 
 	for (int i = 0; i < length; i++) {
 		for (int j = 0; j < width; j++) {
-			//pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y, upperleft.z - j * restlen));
 			pos.push_back(glm::vec3(upperleft.x - i * restlen, upperleft.y + j * restlen, upperleft.z));
 			normal.push_back(glm::vec3(0.0f));
 			vel.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -160,7 +159,6 @@ void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad
 		#pragma omp parallel for
 		for (int i = 0; i < length; i++) { // for each conjunctions
 			for (int j = 0; j < width; j++) {
-				//if ((i == 0 && j == 0) || (i == length/4.0 && j == 0) || (i == length - 1 && j == 0)) continue; // exclude the pins
 				if (j == 0) {
 					if (i == 0 || i == length/3 || i == 2*length/3 || i == length - 1) continue; // exclude the pins
 				}
@@ -216,7 +214,7 @@ void Cloth::update(float total_dt, int substep, glm::vec3 obs_loc, float obs_rad
 }
 
 void Cloth::drag(vector<glm::vec3>& gforce, bool comp_normal) {
-	float c = 1.5f;
+	float c = 2.0f;
 	if (comp_normal) { // if we need to update normals
 		#pragma omp parallel for
 		for (int i = 0; i < width * length; i++) { // we reset all the normals first
@@ -240,19 +238,8 @@ void Cloth::drag(vector<glm::vec3>& gforce, bool comp_normal) {
 
 			// compute normal for triangles
 			vtmp = pos[ind2] - pos[ind0]; // diagonal vector
-			glm::vec3 n0 = glm::cross(pos[1] - pos[0], vtmp); // unnormalized normal
-			glm::vec3 n1 = glm::cross(vtmp, pos[3] - pos[0]);
-
-			/*
-			float a0 = glm::length(n0); // intermediate result of area
-			float a1 = glm::length(n1);
-			n0 /= a0; // normalized normal
-			n1 /= a1;
-			a0 /= 2.0f; // actual area of the triangle
-			a1 /= 2.0f;
-			a0 *= glm::dot(v0, n0) / glm::length(v0);
-			a1 *= glm::dot(v1, n1) / glm::length(v1);
-			*/
+			glm::vec3 n0 = glm::cross(pos[ind1] - pos[ind0], vtmp); // unnormalized normal
+			glm::vec3 n1 = glm::cross(vtmp, pos[ind3] - pos[ind0]);
 
 			// compute the final force
 			glm::vec3 f0 = -0.5f * c * (glm::length(v0) * glm::dot(v0, n0) / (2.0f * glm::length(n0))) * n0; // force on each triangle
@@ -280,8 +267,6 @@ void Cloth::drag(vector<glm::vec3>& gforce, bool comp_normal) {
 	}
 }
 
-/*
-There's really no need to compute normals at each substep
-because the intermediate results won't be drawn anyway
-updating at the final substep should suffice
-*/
+void Cloth::set_wind(glm::vec3 new_speed) {
+	wind_v = new_speed;
+}

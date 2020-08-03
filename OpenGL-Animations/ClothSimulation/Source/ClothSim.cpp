@@ -240,7 +240,7 @@ void init() {
 
 void update(float dt, GLuint vbo[], GLuint vbo1[]) {
     
-    cloth.update(dt, 100, sph_loc, sph_rad);
+    cloth.update(dt, 70, sph_loc, sph_rad);
     vertices = cloth.vertex_buffer();
     normals = cloth.get_normal();
 
@@ -323,7 +323,3 @@ void set_wind(SDL_Event event, Cloth& cloth) {
         cloth.set_wind(wind_dir * windspeed);
     }
 }
-
-/*
-Shading needs to be fixed
-*/
