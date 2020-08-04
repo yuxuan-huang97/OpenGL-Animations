@@ -24,6 +24,9 @@
 #include "../../Tools/UserControl.h"
 #include "Cloth.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../stb_image.h"
+
 using namespace std;
 
 int screen_width, screen_height;
@@ -58,12 +61,19 @@ glm::vec3 wind_dir;
 float windspeed;
 
 GLuint shaderProgram;
+GLuint uvshaderProgram;
 void init();
-void update(float dt, GLuint vbo[], GLuint vbo1[]);
+void update(float dt, GLuint vbo[], GLuint vbo_sph[]);
 void draw_cloth();
 void draw_sphere();
 void set_camera();
 void set_wind(SDL_Event event, Cloth &cloth);
+GLuint load_texture(const char* filePath);
+
+GLuint vao_cloth, vao_sph;
+GLuint texture;
+
+bool play = false;
 
 int main(int argc, char* args[]) {
 
@@ -111,6 +121,13 @@ int main(int argc, char* args[]) {
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     loadShader(fragmentShader, "../ClothSimulation/Shader/fragmentshader.txt");
 
+    //Load the default vertex Shader
+    GLuint uvvertexShader = glCreateShader(GL_VERTEX_SHADER);
+    loadShader(uvvertexShader, "../ClothSimulation/Shader/uvvertexshader.txt");
+
+    //Load the default fragment Shader
+    GLuint uvfragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    loadShader(uvfragmentShader, "../ClothSimulation/Shader/uvfragmentshader.txt");
 
     //Join the vertex and fragment shaders together into one program
 
@@ -120,44 +137,56 @@ int main(int argc, char* args[]) {
     glBindFragDataLocation(shaderProgram, 0, "outColor"); // set output
     glLinkProgram(shaderProgram); //run the linker
 
-    glUseProgram(shaderProgram);
+    uvshaderProgram = glCreateProgram();
+    glAttachShader(uvshaderProgram, uvvertexShader);
+    glAttachShader(uvshaderProgram, uvfragmentShader);
+    glBindFragDataLocation(uvshaderProgram, 0, "outColor"); // set output
+    glLinkProgram(uvshaderProgram); //run the linker
 
-    uniModel = glGetUniformLocation(shaderProgram, "model");
-    uniView = glGetUniformLocation(shaderProgram, "view");
-    uniProj = glGetUniformLocation(shaderProgram, "proj");
-    uniColor = glGetUniformLocation(shaderProgram, "inColor");
+    //glUseProgram(shaderProgram);
     //============================ Model Setup =======================================
     
     loadobj("../ClothSimulation/Assets/sphere.obj", svertices, suvs, snormals);
     sph_vert = svertices.size();
     
+    texture = load_texture("../ClothSimulation/Assets/UMN.jpg");
     //============================ Buffer Setup ======================================
 
     //Build a Vertex Array Object. This stores the VBO and attribute mappings in one object
-    GLuint vao;
-    glGenVertexArrays(1, &vao); // VAO for particles
-    glBindVertexArray(vao); //Bind the above created VAO to the current context
+    glGenVertexArrays(1, &vao_cloth); // VAO for cloth
+    glGenVertexArrays(1, &vao_sph); // VAO for sphere
+    glBindVertexArray(vao_sph); //Bind the sphere VAO to the current context
 
     //Allocate memory on the graphics card to store geometry (vertex buffer object)
-    GLuint vbo[2], vbo1[2];
-    glGenBuffers(2, vbo);  //Create 1 buffer called vbo
-    glGenBuffers(2, vbo1);
+    GLuint vbo_cloth[3], vbo_sph[2];
+    glGenBuffers(3, vbo_cloth);
+    glGenBuffers(2, vbo_sph);
 
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo1[0]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_sph[0]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
     glBufferData(GL_ARRAY_BUFFER, svertices.size() * sizeof(float), &svertices[0], GL_STATIC_DRAW); //upload vertices to vbo
 
     GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(posAttrib);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo1[1]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_sph[1]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
     glBufferData(GL_ARRAY_BUFFER, snormals.size() * sizeof(float), &snormals[0], GL_STATIC_DRAW); //upload vertices to vbo
 
     GLint normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
     glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(normalAttrib);
 
+
+    glBindVertexArray(vao_cloth); //Bind the cloth VAO to the current context
+
+    vector<float> uvs = cloth.get_uv();
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_cloth[2]); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
+    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(float), &uvs[0], GL_STATIC_DRAW); //upload vertices to vbo
+
+    GLint uvAttrib = glGetAttribLocation(uvshaderProgram, "inUV");
+    glVertexAttribPointer(uvAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(uvAttrib);
 
     GLuint ebo; // Element buffer object
     glGenBuffers(1, &ebo);
@@ -179,6 +208,8 @@ int main(int argc, char* args[]) {
           //Scancode referes to a keyboard position, keycode referes to the letter (e.g., EU keyboards)
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
                 quit = true; //Exit event loop
+            if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_SPACE)
+                play = true; //play
 
             set_wind(windowEvent, cloth);
 
@@ -195,8 +226,7 @@ int main(int argc, char* args[]) {
         if (dt > .1) dt = .1; //Have some max dt
         lastTime = SDL_GetTicks() / 1000.f;
 
-        //update(dt, vbo, vbo1);
-        update(0.035, vbo, vbo1);
+        update(0.035, vbo_cloth, vbo_sph);
 
         //printf("FPS: %i \n", int(1 / dt));
 
@@ -209,8 +239,10 @@ int main(int argc, char* args[]) {
     glDeleteShader(vertexShader);
 
     glDeleteBuffers(1, &ebo);
-    glDeleteBuffers(1, vbo);
-    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, vbo_cloth);
+    glDeleteBuffers(1, vbo_sph);
+    glDeleteVertexArrays(1, &vao_cloth);
+    glDeleteVertexArrays(1, &vao_sph);
 
     SDL_GL_DeleteContext(context);
     SDL_Quit();
@@ -230,7 +262,7 @@ void init() {
 
     sph_loc = glm::vec3(0.0f, 10.0f, 10.0f);
     sph_rad = 2.5f;
-    sph_color = glm::vec3(1.0f, 1.0f, 0.0f);
+    sph_color = glm::vec3(1.0f, 1.0f, 1.0f);
 
     grabbed = false;
 
@@ -238,9 +270,9 @@ void init() {
     windspeed = 0.0f;
 }
 
-void update(float dt, GLuint vbo[], GLuint vbo1[]) {
+void update(float dt, GLuint vbo[], GLuint vbo_sph[]) {
     
-    cloth.update(dt, 70, sph_loc, sph_rad);
+    if (play) cloth.update(dt, 70, sph_loc, sph_rad);
     vertices = cloth.vertex_buffer();
     normals = cloth.get_normal();
 
@@ -252,32 +284,40 @@ void update(float dt, GLuint vbo[], GLuint vbo1[]) {
     }
 
     set_camera();
+    uniModel = glGetUniformLocation(uvshaderProgram, "model");
+    uniView = glGetUniformLocation(uvshaderProgram, "view");
+    uniProj = glGetUniformLocation(uvshaderProgram, "proj");
+
+    glBindVertexArray(vao_cloth);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo[0]); // vertex positions
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STREAM_DRAW);
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    GLint posAttrib = glGetAttribLocation(uvshaderProgram, "position");
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(posAttrib);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo[1]); // vertex normals
     glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), &normals[0], GL_STREAM_DRAW);
-    GLint normalAttrib = glGetAttribLocation(shaderProgram, "inNormal");
+    GLint normalAttrib = glGetAttribLocation(uvshaderProgram, "inNormal");
     glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(normalAttrib);
 
+    glUseProgram(uvshaderProgram);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
     draw_cloth();
 
 
     set_camera();
+    uniModel = glGetUniformLocation(shaderProgram, "model");
+    uniView = glGetUniformLocation(shaderProgram, "view");
+    uniProj = glGetUniformLocation(shaderProgram, "proj");
+    uniColor = glGetUniformLocation(shaderProgram, "inColor");
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo1[0]);
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(posAttrib);
+    glBindVertexArray(vao_sph);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo1[1]);
-    glVertexAttribPointer(normalAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(normalAttrib);
-
+    glUseProgram(shaderProgram);
+    
     draw_sphere();
 
 }
@@ -322,4 +362,30 @@ void set_wind(SDL_Event event, Cloth& cloth) {
         }
         cloth.set_wind(wind_dir * windspeed);
     }
+}
+
+// texture mapping related function
+GLuint load_texture(const char* filePath) {
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    // set the texture wrapping/filtering options (on the currently bound texture object)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // load and generate the texture
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(filePath, &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load texture" << std::endl;
+    }
+    stbi_image_free(data);
+    return texture;
 }

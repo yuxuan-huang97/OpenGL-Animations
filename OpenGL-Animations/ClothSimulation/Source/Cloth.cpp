@@ -71,16 +71,23 @@ vector<int> Cloth::get_index() {
 	return index_buffer;
 }
 
+vector<float> Cloth::get_uv() {
+	vector<float> uvs;
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < width; j++) {
+			uvs.push_back(i / float(length - 1)); // u
+			//uvs.push_back((width - j) / float(width - 1)); // v
+			uvs.push_back(j / float(width - 1)); // v
+		}
+	}
+	return uvs;
+}
+
 vector<float> Cloth::get_normal() {
 	vector<float> result;
 	glm::vec3 n;
 	for (int i = 0; i < length; i++) {
 		for (int j = 0; j < width; j++) {
-			/*
-			result.push_back(0.0f);
-			result.push_back(1.0f);
-			result.push_back(0.0f);
-			*/
 			n = glm::normalize(normal[i * width + j]);
 			result.push_back(n.x);
 			result.push_back(n.y);
