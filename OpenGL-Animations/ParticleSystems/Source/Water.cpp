@@ -76,8 +76,8 @@ void init();
 void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
 void computePhysics(float dt);
 void set_camera();
-void draw_particles(float dt);
-void draw_sphere(float dt);
+void draw_particles();
+void draw_sphere();
 float autosize(glm::vec3 cam, glm::vec3 ptc, float size);
 
 int main(int argc, char* argv[]) {
@@ -315,7 +315,7 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
     uniProj = glGetUniformLocation(shader1, "proj");
     glUseProgram(shader1); //Set the particle shader to active
     glBindVertexArray(vao1);
-    draw_particles(dt);
+    draw_particles();
 
     set_camera();
     uniModel = glGetUniformLocation(shader2, "model");
@@ -323,7 +323,7 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
     uniProj = glGetUniformLocation(shader2, "proj");
     glUseProgram(shader2);
     glBindVertexArray(vao2);
-    draw_sphere(dt);
+    draw_sphere();
     computePhysics(dt);
 }
 
@@ -343,7 +343,7 @@ void set_camera() {
 
 }
 
-void draw_particles(float dt) {
+void draw_particles() {
     // iterate through all particles
     for (int i = 0; i < water.Pos.size(); i++) {
         glm::mat4 model = glm::mat4();
@@ -356,7 +356,7 @@ void draw_particles(float dt) {
 
 }
 
-void draw_sphere(float dt) {
+void draw_sphere() {
     glm::mat4 model = glm::mat4();
     model = glm::translate(model, sph_loc);
     model = glm::scale(model, glm::vec3(sph_rad));
