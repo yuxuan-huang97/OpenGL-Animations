@@ -76,9 +76,9 @@ void init();
 void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2);
 void computePhysics(float dt);
 void set_camera();
-void draw_particles(float dt);
-void draw_sphere(float dt);
-void draw_env(float dt);
+void draw_particles();
+void draw_sphere();
+void draw_env();
 float autosize(glm::vec3 cam, glm::vec3 ptc, float size);
 
 int main(int argc, char* argv[]) {
@@ -321,7 +321,7 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
     uniColor = glGetUniformLocation(shader1, "inColor");
     glUseProgram(shader1); //Set the particle shader to active
     glBindVertexArray(vao1);
-    draw_particles(dt);
+    draw_particles();
 
 
     set_camera();
@@ -330,9 +330,9 @@ void update(float dt, GLint shader1, GLint shader2, GLint vao1, GLint vao2) {
     uniProj = glGetUniformLocation(shader2, "proj");
     glUseProgram(shader2);
     glBindVertexArray(vao2);
-    draw_sphere(dt);
+    draw_sphere();
 
-    draw_env(dt);
+    draw_env();
 
 
     computePhysics(dt);
@@ -353,7 +353,7 @@ void set_camera() {
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 }
 
-void draw_particles(float dt) {
+void draw_particles() {
     // iterate through all particles
     for (int i = 0; i < fire.Pos.size(); i++) {
         glm::mat4 model = glm::mat4();
@@ -366,7 +366,7 @@ void draw_particles(float dt) {
 
 }
 
-void draw_sphere(float dt) {
+void draw_sphere() {
     glm::mat4 model = glm::mat4();
     model = glm::translate(model, sph_loc);
     model = glm::scale(model, glm::vec3(sph_rad));
@@ -376,7 +376,7 @@ void draw_sphere(float dt) {
 
 }
 
-void draw_env(float dt) {
+void draw_env() {
     glm::mat4 model = glm::mat4();
     model = glm::translate(model, env_loc);
     model = glm::scale(model, glm::vec3(1.0f));
