@@ -5,6 +5,10 @@ VisualStudioVersion = 16.0.29709.97
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ParticleSystems", "ParticleSystems\ParticleSystems.vcxproj", "{DA6DE87E-140F-45D6-999A-B6C9B9DA657B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ClothSimulation", "ClothSimulation\ClothSimulation.vcxproj", "{B817EFCD-76E5-4806-9779-A8AD526037F9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FluidSimulation", "FluidSimulation\FluidSimulation.vcxproj", "{2DF140C4-FE63-4BED-87BA-602886337581}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +25,22 @@ Global
 		{DA6DE87E-140F-45D6-999A-B6C9B9DA657B}.Release|x64.Build.0 = Release|x64
 		{DA6DE87E-140F-45D6-999A-B6C9B9DA657B}.Release|x86.ActiveCfg = Release|Win32
 		{DA6DE87E-140F-45D6-999A-B6C9B9DA657B}.Release|x86.Build.0 = Release|Win32
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Debug|x64.ActiveCfg = Debug|x64
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Debug|x64.Build.0 = Debug|x64
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Debug|x86.ActiveCfg = Debug|Win32
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Debug|x86.Build.0 = Debug|Win32
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Release|x64.ActiveCfg = Release|x64
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Release|x64.Build.0 = Release|x64
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Release|x86.ActiveCfg = Release|Win32
+		{B817EFCD-76E5-4806-9779-A8AD526037F9}.Release|x86.Build.0 = Release|Win32
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Debug|x64.ActiveCfg = Debug|x64
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Debug|x64.Build.0 = Debug|x64
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Debug|x86.ActiveCfg = Debug|Win32
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Debug|x86.Build.0 = Debug|Win32
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Release|x64.ActiveCfg = Release|x64
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Release|x64.Build.0 = Release|x64
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Release|x86.ActiveCfg = Release|Win32
+		{2DF140C4-FE63-4BED-87BA-602886337581}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,11 @@
+#version 330 core
+in vec3 Color;
+in vec3 normal;
+in vec3 lightDir;
+out vec4 outColor;
+const float ambient = .4;
+void main() {
+   vec3 diffuseC = Color*max(dot(lightDir,normal),0);
+   vec3 ambC = Color*ambient;
+   outColor = vec4(diffuseC+ambC, 1.0);
+};
