@@ -11,7 +11,8 @@ shallow1d::shallow1d() {
 	init();
 }
 
-shallow1d::shallow1d(int num_of_divisions, float width_of_cell, float gravity, boundary_condition boundary, float len, float wid, float hi) {
+shallow1d::shallow1d(int num_of_divisions, float width_of_cell, float gravity, boundary_condition boundary,\
+	float len, float wid, float hi, float s) {
 	g = gravity;
 	n = num_of_divisions;
 	dx = width_of_cell;
@@ -19,6 +20,7 @@ shallow1d::shallow1d(int num_of_divisions, float width_of_cell, float gravity, b
 	length = len;
 	width = wid;
 	height = hi;
+	scale = s;
 	init();
 }
 
@@ -72,6 +74,7 @@ void shallow1d::waveUpdate(float dt) {
 	set_boundary();
 
 	// update buffers
+
 }
 
 void shallow1d::set_boundary() {
@@ -94,6 +97,14 @@ void shallow1d::set_boundary() {
 		uh[0] = uh[1];
 		uh[n - 1] = uh[n - 2];
 	}
+}
+
+void shallow1d::update_vertex() {
+
+}
+
+void shallow1d::update_normal() {
+
 }
 
 /*
