@@ -36,7 +36,8 @@ glm::vec3 cam_loc, look_at, up;
 GLint uniModel, uniView, uniProj, uniColor;
 
 // shallow water 1D
-shallow1d water;
+//shallow1d water;
+shallow1d water(100, 0.1f, 10.f, boundary_condition::reflective, 10.f, 10.f, 0.f, 50);
 
 GLuint shaderProgram;
 GLuint vbo[2];
@@ -213,7 +214,8 @@ void draw() {
     model = glm::translate(model, glm::vec3(0.0f));
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, 0.34f, 0.78f, 1.0f);
+    //glUniform3f(uniColor, 0.34f, 0.78f, 1.0f);
+    glUniform3f(uniColor, 0.0f, 0.0f, 1.0f);
     glDrawElements(GL_TRIANGLES, water.indices.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
 }
 

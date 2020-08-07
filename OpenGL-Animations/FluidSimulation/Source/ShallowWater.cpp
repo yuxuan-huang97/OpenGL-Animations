@@ -132,14 +132,14 @@ void shallow1d::update_normal() {
 	normals[2] = ntmp.z;
 	normals[4] = ntmp.y;
 	normals[5] = ntmp.z;
-	ntmp = glm::normalize(glm::vec3(0.f, vertices[6 * n - 10] - vertices[6 * n - 6], vertices[6 * n - 5] - vertices[6 * n - 11]));
+	ntmp = glm::normalize(glm::vec3(0.f, vertices[6 * n - 10] - vertices[6 * n - 4], vertices[6 * n - 5] - vertices[6 * n - 11]));
 	normals[6 * n - 5] = ntmp.y;
 	normals[6 * n - 4] = ntmp.z;
 	normals[6 * n - 2] = ntmp.y;
 	normals[6 * n - 1] = ntmp.z;
 	// normals of other vertices
 	for (int i = 1; i < n - 1; i++) {
-		ntmp = glm::normalize(glm::vec3(0.f, vertices[6 * i - 5] - vertices[6 * i + 7], vertices[6 * i + 8] - vertices[6 * i - 4]));
+		ntmp = glm::normalize(glm::vec3(0.f, vertices[6 * i - 4] - vertices[6 * i + 8], vertices[6 * i + 7] - vertices[6 * i - 5]));
 		normals[6 * i + 1] = ntmp.y;
 		normals[6 * i + 2] = ntmp.z;
 		normals[6 * i + 4] = ntmp.y;
