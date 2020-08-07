@@ -34,7 +34,7 @@ shallow1d::shallow1d(int num_of_divisions, float width_of_cell, float gravity, b
 
 void shallow1d::init() {
 	for (int i = 0; i < n; i++) {
-		h.push_back(0.0f);
+		h.push_back(1.0f);
 		uh.push_back(0.0f);
 		hm.push_back(0.0f);
 		uhm.push_back(0.0f);
@@ -66,20 +66,21 @@ void shallow1d::waveUpdate(float dt) {
     // halfstep
     for (int i = 0; i < n - 1; i++) {
         hm[i] = (h[i] + h[i + 1]) / 2.0 - (dt / 2.0) * (uh[i + 1] - uh[i]) / dx;
-        uhm[i] = (uh[i] + uh[i + 1]) / 2.0 - (dt / 2.0) *
-            ((uh[i + 1] * uh[i + 1]) / h[i + 1] + 0.5 * g * h[i + 1] * h[i + 1] -
+        uhm[i] = (uh[i] + uh[i + 1]) / 2.0 - (dt / 2.0) * \
+            ((uh[i + 1] * uh[i + 1]) / h[i + 1] + 0.5 * g * h[i + 1] * h[i + 1] - \
             (uh[i] * uh[i]) / h[i] - 0.5 * g * h[i] * h[i]) / dx;
     }
     // fullstep
     float damp = 0.1;
     for (int i = 0; i < n - 2; i++) {
         h[i + 1] -= dt * (uhm[i + 1] - uhm[i]) / dx;
-        uh[i + 1] -= dt * (damp * uh[i + 1] +
-            (uhm[i + 1] * uhm[i + 1]) / hm[i + 1] + 0.5 * g * hm[i + 1] * hm[i + 1] -
+        uh[i + 1] -= dt * (damp * uh[i + 1] + \
+            (uhm[i + 1] * uhm[i + 1]) / hm[i + 1] + 0.5 * g * hm[i + 1] * hm[i + 1] - \
             uhm[i] * uhm[i] / hm[i] - 0.5 * g * hm[i] * hm[i]) / dx;
     }
 	// boundary conditions
 	set_boundary();
+	
 
 	// update buffers
 	update_vertex();
@@ -145,6 +146,15 @@ void shallow1d::update_normal() {
 		normals[6 * i + 5] = ntmp.z;
 	}
 }
+
+void shallow1d::set_h(int index, float value) {
+	h[index] = value;
+}
+
+void shallow1d::set_uh(int index, float value) {
+	uh[index] = value;
+}
+
 
 /*
 the direction of gravity?

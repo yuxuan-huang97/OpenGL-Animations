@@ -35,14 +35,17 @@ glm::vec3 cam_loc, look_at, up;
 //Index of where to model, view, and projection matricies are stored on the GPU
 GLint uniModel, uniView, uniProj, uniColor;
 
-// cloth specs
-vector<float> vertices;
-vector<int> index;
+// shallow water 1D
+shallow1d water;
+
+GLuint shaderProgram;
+GLuint vbo[2];
 
 void init();
 void update(float dt);
 void draw();
 void set_camera();
+void perturbation(SDL_Event event);
 
 int main(int argc, char* args[]) {
 
@@ -93,7 +96,7 @@ int main(int argc, char* args[]) {
 
     //Join the vertex and fragment shaders together into one program
 
-    GLuint shaderProgram = glCreateProgram();
+    shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glBindFragDataLocation(shaderProgram, 0, "outColor"); // set output
@@ -117,29 +120,16 @@ int main(int argc, char* args[]) {
     glBindVertexArray(vao); //Bind the above created VAO to the current context
 
     //Allocate memory on the graphics card to store geometry (vertex buffer object)
-    GLuint vbo;
-    glGenBuffers(1, &vbo);  //Create 1 buffer called vbo
+    glGenBuffers(2, vbo);  //Create 1 buffer called vbo
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo); //Set the vbo as the active array buffer (Only one buffer can be active at a time)
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW); //upload vertices to vbo
-    //GL_STATIC_DRAW means we won't change the geometry, GL_DYNAMIC_DRAW = geometry changes infrequently
-    //GL_STREAM_DRAW = geom. changes frequently.  This effects which types of GPU memory is used
-
-    
     GLuint ebo; // Element buffer object
     glGenBuffers(1, &ebo);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, index.size() * sizeof(int), &index[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, water.indices.size() * sizeof(int), &water.indices[0], GL_STATIC_DRAW);
     
 
 
-    //Tell OpenGL how to set fragment shader input (for particles)
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    //Attribute, vals/attrib., type, normalized?, stride, offset
-    //Binds to VBO current GL_ARRAY_BUFFER 
-    glEnableVertexAttribArray(posAttrib);
 
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
@@ -155,6 +145,7 @@ int main(int argc, char* args[]) {
           //Scancode referes to a keyboard position, keycode referes to the letter (e.g., EU keyboards)
             if (windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
                 quit = true; //Exit event loop
+            perturbation(windowEvent);
             //move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
         }
 
@@ -162,7 +153,8 @@ int main(int argc, char* args[]) {
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        if (dt > .1) dt = .1; //Have some max dt
+        //if (dt > .1) dt = .1; //Have some max dt
+        dt = 0.01f;
         lastTime = SDL_GetTicks() / 1000.f;
 
         update(dt);
@@ -175,7 +167,8 @@ int main(int argc, char* args[]) {
     glDeleteShader(fragmentShader);
     glDeleteShader(vertexShader);
 
-    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(2, vbo);
     glDeleteVertexArrays(1, &vao);
 
     SDL_GL_DeleteContext(context);
@@ -191,13 +184,26 @@ void init() {
     look_at = glm::vec3(0.0f, 0.0f, 0.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    vertices = {5.0f,-5.0f,0.0f, 5.0f,5.0f,0.0f, -5.0f,5.0f,0.0f, -5.0f,-5.0f,0.0f };
-    index = { 0, 1, 2,  0, 2, 3 };
 }
 
 void update(float dt) {
+    water.waveUpdate(dt);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+    glBufferData(GL_ARRAY_BUFFER, water.vertices.size() * sizeof(float), &water.vertices[0], GL_STREAM_DRAW); //upload vertices to vbo
+
+    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(posAttrib);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+    glBufferData(GL_ARRAY_BUFFER, water.normals.size() * sizeof(float), &water.normals[0], GL_STREAM_DRAW); //upload normals to vbo
+
+    GLint normAttrib = glGetAttribLocation(shaderProgram, "inNormal");
+    glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(normAttrib);
+
     set_camera();
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     draw();
     return;
 }
@@ -207,9 +213,8 @@ void draw() {
     model = glm::translate(model, glm::vec3(0.0f));
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform3f(uniColor, 0.0f, 0.0f, 1.0f);
-    glDrawElements(GL_TRIANGLES, index.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
-    //glDrawArrays(GL_TRIANGLES, 0, 3);
+    glUniform3f(uniColor, 0.34f, 0.78f, 1.0f);
+    glDrawElements(GL_TRIANGLES, water.indices.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
 }
 
 void set_camera() {
@@ -220,4 +225,13 @@ void set_camera() {
     //Set the Camera Position and Orientation
     glm::mat4 view = glm::lookAt(cam_loc, look_at, up); // camera location, look at point, up direction
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
+}
+
+void perturbation(SDL_Event event) {
+    if (event.type == SDL_KEYUP) {
+        if (event.key.keysym.sym == SDLK_RETURN) {
+            water.set_uh(water.n / 2, 3.0f);
+            //water.set_h(water.n / 2, 2.0f);
+        }
+    }
 }
