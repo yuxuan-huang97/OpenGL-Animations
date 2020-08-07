@@ -1,6 +1,10 @@
 // 1D and 2D shallow water template
 // by Yuxuan Huang
 
+#define GLM_FORCE_RADIANS
+#include "../../../glm/glm.hpp"
+#include "../../../glm/gtc/matrix_transform.hpp"
+#include "../../../glm/gtc/type_ptr.hpp"
 #include "ShallowWater.h"
 
 shallow1d::shallow1d() {
@@ -8,6 +12,10 @@ shallow1d::shallow1d() {
 	n = 50;
 	dx = 0.1f;
 	b_cond = boundary_condition::free;
+	length = 10.f;
+	width = 10.f;
+	height = 0.f;
+	scale = 50.f;
 	init();
 }
 
@@ -74,7 +82,8 @@ void shallow1d::waveUpdate(float dt) {
 	set_boundary();
 
 	// update buffers
-
+	update_vertex();
+	update_normal();
 }
 
 void shallow1d::set_boundary() {
@@ -100,11 +109,41 @@ void shallow1d::set_boundary() {
 }
 
 void shallow1d::update_vertex() {
-
+	float left = -length / 2.0;
+	float near = width / 2.0;
+	float step = length / (n - 1);
+	for (int i = 0; i < n; i++) {
+		// near vertex
+		vertices[6 * i] = near;
+		vertices[6 * i + 1] = left + i * step;
+		vertices[6 * i + 2] = height + h[i];
+		// far vertex
+		vertices[6 * i + 3] = -near;
+		vertices[6 * i + 4] = left + i * step;
+		vertices[6 * i + 5] = height + h[i];
+	}
 }
 
 void shallow1d::update_normal() {
-
+	// normals of boundary vertices
+	glm::vec3 ntmp = glm::normalize(glm::vec3(0.f, vertices[2] - vertices[8], vertices[7] - vertices[1])); // deltax(0), -deltaz, deltay
+	normals[1] = ntmp.y; // x component is always 0
+	normals[2] = ntmp.z;
+	normals[4] = ntmp.y;
+	normals[5] = ntmp.z;
+	ntmp = glm::normalize(glm::vec3(0.f, vertices[6 * n - 10] - vertices[6 * n - 6], vertices[6 * n - 5] - vertices[6 * n - 11]));
+	normals[6 * n - 5] = ntmp.y;
+	normals[6 * n - 4] = ntmp.z;
+	normals[6 * n - 2] = ntmp.y;
+	normals[6 * n - 1] = ntmp.z;
+	// normals of other vertices
+	for (int i = 1; i < n - 1; i++) {
+		ntmp = glm::normalize(glm::vec3(0.f, vertices[6 * i - 5] - vertices[6 * i + 7], vertices[6 * i + 8] - vertices[6 * i - 4]));
+		normals[6 * i + 1] = ntmp.y;
+		normals[6 * i + 2] = ntmp.z;
+		normals[6 * i + 4] = ntmp.y;
+		normals[6 * i + 5] = ntmp.z;
+	}
 }
 
 /*
