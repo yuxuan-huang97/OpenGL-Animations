@@ -24,6 +24,7 @@ public:
 
 	void set_h(int index, float value);
 	void set_uh(int index, float value);
+	void set_boundary(boundary_condition new_boundary_condition);
 
 private:
 	float g; // gravity

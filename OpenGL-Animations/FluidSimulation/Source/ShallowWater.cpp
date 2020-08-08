@@ -155,6 +155,9 @@ void shallow1d::set_uh(int index, float value) {
 	uh[index] = value;
 }
 
+void shallow1d::set_boundary(boundary_condition bc) {
+	b_cond = bc;
+}
 
 /*
 the direction of gravity?

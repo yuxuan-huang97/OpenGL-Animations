@@ -6,13 +6,9 @@
 #include <string>
 
 #include "../../../glad/glad.h"  //Include order can matter here
-#ifdef __APPLE__
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
-#else
+
 #include <SDL.h>
 #include <SDL_opengl.h>
-#endif
 #include <cstdio>
 
 #define GLM_FORCE_RADIANS
@@ -37,7 +33,7 @@ GLint uniModel, uniView, uniProj, uniColor;
 
 // shallow water 1D
 //shallow1d water;
-shallow1d water(100, 0.1f, 10.f, boundary_condition::reflective, 10.f, 10.f, 0.f, 50);
+shallow1d water(70, 0.1f, 10.f, boundary_condition::free, 10.f, 10.f, 0.f, 50);
 
 GLuint shaderProgram;
 GLuint vbo[2];
@@ -181,8 +177,8 @@ void init() {
     screen_width = 800;
     screen_height = 600;
 
-    cam_loc = glm::vec3(13.f, 0.f, 5.f);
-    look_at = glm::vec3(0.0f, 0.0f, 0.0f);
+    cam_loc = glm::vec3(11.5f, 0.f, 8.f);
+    look_at = glm::vec3(0.0f, 0.0f, 1.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
 }
@@ -231,9 +227,13 @@ void set_camera() {
 
 void perturbation(SDL_Event event) {
     if (event.type == SDL_KEYUP) {
-        if (event.key.keysym.sym == SDLK_RETURN) {
-            water.set_uh(water.n / 2, 3.0f);
-            //water.set_h(water.n / 2, 2.0f);
+        switch (event.key.keysym.sym) {
+        case SDLK_UP: water.set_uh(water.n / 2, 3.0f); break;
+        case SDLK_LEFT: water.set_uh(water.n / 3, 3.0f); break;
+        case SDLK_RIGHT: water.set_uh(2 * water.n / 3, 3.0f); break;
+        case SDLK_f: water.set_boundary(boundary_condition::free); break;
+        case SDLK_p: water.set_boundary(boundary_condition::periodic); break;
+        case SDLK_r: water.set_boundary(boundary_condition::reflective); break;
         }
     }
 }
