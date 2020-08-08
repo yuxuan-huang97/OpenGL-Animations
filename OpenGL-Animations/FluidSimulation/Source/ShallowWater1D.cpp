@@ -57,7 +57,7 @@ int main(int argc, char* args[]) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
     //Create a window (offsetx, offsety, width, height, flags)
-    SDL_Window* window = SDL_CreateWindow("Cloth Simulation", 100, 100, screen_width, screen_height, SDL_WINDOW_OPENGL);
+    SDL_Window* window = SDL_CreateWindow("Shallow Water 1D", 100, 100, screen_width, screen_height, SDL_WINDOW_OPENGL);
     aspect = screen_width / (float)screen_height; //aspect ratio (needs to be updated if the window is resized)
 
     //The above window cannot be resized which makes some code slightly easier.
