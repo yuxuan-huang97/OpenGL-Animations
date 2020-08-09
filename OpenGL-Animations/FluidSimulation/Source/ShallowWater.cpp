@@ -197,19 +197,18 @@ shallow2d::shallow2d(int x_divisions, int y_divisions, float width_of_cell, floa
 
 
 void shallow2d::init() {
-	for (int i = 0; i < (nx - 1) * (ny - 1); i++) {
+	for (int i = 0; i < nx * ny; i++) {
 		h.push_back(1.0f);
 		uh.push_back(0.0f);
 		vh.push_back(0.0f);
-		xhm.push_back(0.0f);
-		yhm.push_back(0.0f);
-		uhm.push_back(0.0f);
-		vhm.push_back(0.0f);
 	}
-	for (int i = 0; i < nx + ny - 1; i++) {
-		h.push_back(1.0f);
-		uh.push_back(0.0f);
-		vh.push_back(0.0f);
+	for (int i = 0; i < (nx - 1) * ny; i++) {
+		xhm.push_back(1.0f);
+		uhm.push_back(0.0f);
+	}
+	for (int i = 0; i < nx * (ny - 1); i++) {
+		yhm.push_back(1.0f);
+		vhm.push_back(0.0f);
 	}
 	init_buffer();
 }
@@ -238,35 +237,44 @@ void shallow2d::init_buffer() {
 void shallow2d::waveUpdate(float dt) {
 
 	// halfstep
-	for (int i = 0; i < nx - 1; i++) { // for x
-		xhm[i] = (h[i] + h[i + 1]) / 2.0 - (dt / 2.0) * (uh[i + 1] - uh[i]) / dx;
+	for (int i = 0; i < nx - 1; i++) {
+		for (int j = 0; j < ny - 1; j++) {
+			int indx = i + j * nx;
+			int indy = i * ny + j;
+			// for x
+			xhm[indx] = (h[indx] + h[indx + 1]) / 2.0 - (dt / 2.0) * (uh[indx + 1] - uh[indx]) / dx;
+			uhm[indx] = (uh[indx] + uh[indx + 1]) / 2.0 - (dt / 2.0) * \
+				((uh[indx + 1] * uh[indx + 1]) / h[indx + 1] + 0.5 * g * h[indx + 1] * h[indx + 1] - \
+				(uh[indx] * uh[indx]) / h[indx] - 0.5 * g * h[indx] * h[i + j * nx]) / dx;
 
-		uhm[i] = (uh[i] + uh[i + 1]) / 2.0 - (dt / 2.0) * \
-			((uh[i + 1] * uh[i + 1]) / h[i + 1] + 0.5 * g * h[i + 1] * h[i + 1] - \
-			(uh[i] * uh[i]) / h[i] - 0.5 * g * h[i] * h[i]) / dx;
-	}
-	for (int i = 0; i < ny - 1; i++) { // for y
-		yhm[i] = (h[i] + h[i + 1]) / 2.0 - (dt / 2.0) * (vh[i + 1] - vh[i]) / dy;
+			// for y
+			yhm[indy] = (h[indy] + h[indy + 1]) / 2.0 - (dt / 2.0) * (vh[indy + 1] - vh[indy]) / dy;
 
-		vhm[i] = (vh[i] + vh[i + 1]) / 2.0 - (dt / 2.0) * \
-			((vh[i + 1] * vh[i + 1]) / h[i + 1] + 0.5 * g * h[i + 1] * h[i + 1] - \
-			(vh[i] * vh[i]) / h[i] - 0.5 * g * h[i] * h[i]) / dy;
+			vhm[indy] = (vh[indy] + vh[indy + 1]) / 2.0 - (dt / 2.0) * \
+				((vh[indy + 1] * vh[indy + 1]) / h[indy + 1] + 0.5 * g * h[indy + 1] * h[indy + 1] - \
+				(vh[indy] * vh[indy]) / h[indy] - 0.5 * g * h[indy] * h[indy]) / dy;
+		}
 	}
-	// fullstep
+	
+	// fullstep needs to be fixed
 	float damp = 0.1;
 	for (int i = 0; i < nx - 2; i++) {
 		for (int j = 0; j < ny - 2; j++) {
-			h[(i + 1) * ny + j + 1] -= dt * (((uhm[i + 1] - uhm[i]) / dx + (vhm[j + 1] - vhm[j]) / dy));
-			uh[i + 1] -= dt * (damp * uh[i + 1] + \
-				(uhm[i + 1] * uhm[i + 1]) / xhm[i + 1] + 0.5 * g * xhm[i + 1] * xhm[i + 1] - \
-				uhm[i] * uhm[i] / xhm[i] - 0.5 * g * xhm[i] * xhm[i]) / dx + (uhm[i + 1] * vhm[j + 1] /\
-					xhm[i + 1] - uhm[i] * vhm[i] / xhm[i]) / dy;
-			vh[i + 1] -= dt * (damp * vh[i + 1] + \
-				(uhm[i + 1] * vhm[j + 1] / yhm[i + 1] - uhm[i] * vhm[i] / yhm[i]) / dx + \
-				(vhm[i + 1] * vhm[i + 1]) / yhm[i + 1] + 0.5 * g * yhm[i + 1] * yhm[i + 1] - \
-				vhm[i] * vhm[i] / yhm[i] - 0.5 * g * yhm[i] * yhm[i]) / dy;
+			int index = (i + 1) * ny + j + 1;
+			int x_prev = i * ny + j + 1;
+			int y_prev = (i + 1) * ny + j;
+			h[index] -= dt * (((uhm[index] - uhm[x_prev]) / dx + (vhm[index] - vhm[y_prev]) / dy));
+			uh[index] -= dt * (damp * uh[index] + \
+				(uhm[index] * uhm[index]) / xhm[index] + 0.5 * g * xhm[index] * xhm[index] - \
+				uhm[x_prev] * uhm[x_prev] / xhm[x_prev] - 0.5 * g * xhm[x_prev] * xhm[x_prev]) / dx + (uhm[index] * vhm[index] /\
+					xhm[index] - uhm[x_prev] * vhm[y_prev] / xhm[x_prev]) / dy;
+			vh[index] -= dt * (damp * vh[index] + \
+				(uhm[index] * vhm[index] / yhm[index] - uhm[x_prev] * vhm[y_prev] / yhm[y_prev]) / dx + \
+				(vhm[index] * vhm[index]) / yhm[index] + 0.5 * g * yhm[index] * yhm[index] - \
+				vhm[y_prev] * vhm[y_prev] / yhm[y_prev] - 0.5 * g * yhm[y_prev] * yhm[y_prev]) / dy;
 		}
 	}
+	
 	// boundary conditions
 	set_boundary();
 
