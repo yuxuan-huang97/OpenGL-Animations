@@ -197,18 +197,21 @@ shallow2d::shallow2d(int x_divisions, int y_divisions, float width_of_cell, floa
 
 
 void shallow2d::init() {
+	
 	for (int i = 0; i < nx * ny; i++) {
 		h.push_back(1.0f);
 		uh.push_back(0.0f);
 		vh.push_back(0.0f);
 	}
-	for (int i = 0; i < (nx - 1) * ny; i++) {
+	for (int i = 0; i < (nx - 1) * (ny - 2); i++) {
 		xhm.push_back(1.0f);
-		uhm.push_back(0.0f);
+		uhmx.push_back(0.0f);
+		vhmx.push_back(0.0f);
 	}
-	for (int i = 0; i < nx * (ny - 1); i++) {
+	for (int i = 0; i < (nx - 2) * (ny - 1); i++) {
 		yhm.push_back(1.0f);
-		vhm.push_back(0.0f);
+		uhmy.push_back(0.0f);
+		vhmy.push_back(0.0f);
 	}
 	init_buffer();
 }
@@ -237,44 +240,76 @@ void shallow2d::init_buffer() {
 void shallow2d::waveUpdate(float dt) {
 
 	// halfstep
+	// for x
+	//printf("x:\n");
 	for (int i = 0; i < nx - 1; i++) {
-		for (int j = 0; j < ny - 1; j++) {
-			int indx = i + j * nx;
-			int indy = i * ny + j;
-			// for x
-			xhm[indx] = (h[indx] + h[indx + 1]) / 2.0 - (dt / 2.0) * (uh[indx + 1] - uh[indx]) / dx;
-			uhm[indx] = (uh[indx] + uh[indx + 1]) / 2.0 - (dt / 2.0) * \
-				((uh[indx + 1] * uh[indx + 1]) / h[indx + 1] + 0.5 * g * h[indx + 1] * h[indx + 1] - \
-				(uh[indx] * uh[indx]) / h[indx] - 0.5 * g * h[indx] * h[i + j * nx]) / dx;
-
-			// for y
-			yhm[indy] = (h[indy] + h[indy + 1]) / 2.0 - (dt / 2.0) * (vh[indy + 1] - vh[indy]) / dy;
-
-			vhm[indy] = (vh[indy] + vh[indy + 1]) / 2.0 - (dt / 2.0) * \
-				((vh[indy + 1] * vh[indy + 1]) / h[indy + 1] + 0.5 * g * h[indy + 1] * h[indy + 1] - \
+		for (int j = 0; j < ny - 2; j++) {
+			int ind = i * (ny - 2) + j;
+			int indx = i * ny + j + 1;
+			int next_x = (i + 1) * ny + j + 1;
+			
+			xhm[ind] = (h[indx] + h[next_x]) / 2.0 - (dt / 2.0) * (uh[next_x] - uh[indx]) / dx;
+			uhmx[ind] = (uh[indx] + uh[next_x]) / 2.0 - (dt / 2.0) * 
+				((uh[next_x] * uh[next_x]) / h[next_x] + 0.5 * g * h[next_x] * h[next_x] - 
+				(uh[indx] * uh[indx]) / h[indx] - 0.5 * g * h[indx] * h[indx]) / dx;
+			vhmx[ind] = (vh[indx] + vh[next_x]) / 2.0 - (dt / 2.0) * 
+				((uh[next_x] * vh[next_x]) / h[next_x]  - (uh[indx] * vh[indx]) / h[indx]) / dx;
+			/*
+			float num = (vh[indx] + vh[next_x]) / 2.0 - (dt / 2.0) *
+				((uh[next_x] * vh[next_x]) / h[next_x] - (uh[indx] * vh[indx]) / h[indx]) / dx;
+			
+			printf("%f\n", uhmx[ind]);*/
+		}
+	} 
+	// for y
+	//printf("y:\n");
+	for (int j = 0; j < ny - 1; j++) {
+		for (int i = 0; i < nx - 2; i++) {
+			int ind = i * (ny - 1) + j;
+			int indy = (i + 1) * ny + j;
+			//int next_y = indy + 1;
+			yhm[ind] = (h[indy] + h[indy + 1]) / 2.0 - (dt / 2.0) * (vh[indy + 1] - vh[indy]) / dy;
+			vhmy[ind] = (vh[indy] + vh[indy + 1]) / 2.0 - (dt / 2.0) * 
+				((vh[indy + 1] * vh[indy + 1]) / h[indy + 1] + 0.5 * g * h[indy + 1] * h[indy + 1] - 
 				(vh[indy] * vh[indy]) / h[indy] - 0.5 * g * h[indy] * h[indy]) / dy;
+			uhmy[ind] = (uh[indy] + uh[indy + 1]) / 2.0 - (dt / 2.0) * 
+				((vh[indy + 1] * uh[indy + 1]) / h[indy + 1] - (vh[indy] * uh[indy]) / h[indy]) / dy;
+			
+			/*float num = (uh[indy] + uh[indy + 1]) / 2.0 - (dt / 2.0) *
+				((vh[indy + 1] * uh[indy + 1]) / h[indy + 1] - (vh[indy] * uh[indy]) / h[indy]) / dy;
+			
+			printf("%f\n", vhmy[ind]);*/
 		}
 	}
+	//printf("\n");
 	
-	// fullstep needs to be fixed
-	float damp = 0.1;
+	// fullstep
+	float damp = 0.2;
 	for (int i = 0; i < nx - 2; i++) {
 		for (int j = 0; j < ny - 2; j++) {
+
+			// indices
 			int index = (i + 1) * ny + j + 1;
-			int x_prev = i * ny + j + 1;
-			int y_prev = (i + 1) * ny + j;
-			h[index] -= dt * (((uhm[index] - uhm[x_prev]) / dx + (vhm[index] - vhm[y_prev]) / dy));
-			uh[index] -= dt * (damp * uh[index] + \
-				(uhm[index] * uhm[index]) / xhm[index] + 0.5 * g * xhm[index] * xhm[index] - \
-				uhm[x_prev] * uhm[x_prev] / xhm[x_prev] - 0.5 * g * xhm[x_prev] * xhm[x_prev]) / dx + (uhm[index] * vhm[index] /\
-					xhm[index] - uhm[x_prev] * vhm[y_prev] / xhm[x_prev]) / dy;
-			vh[index] -= dt * (damp * vh[index] + \
-				(uhm[index] * vhm[index] / yhm[index] - uhm[x_prev] * vhm[y_prev] / yhm[y_prev]) / dx + \
-				(vhm[index] * vhm[index]) / yhm[index] + 0.5 * g * yhm[index] * yhm[index] - \
-				vhm[y_prev] * vhm[y_prev] / yhm[y_prev] - 0.5 * g * yhm[y_prev] * yhm[y_prev]) / dy;
+			int x_mid = (i + 1) * (ny - 2) + j;
+			int x_prev = i * (ny - 2) + j;
+			int y_mid = i * (ny - 1) + j + 1;
+			int y_prev = i * (ny - 1) + j;
+
+			//update
+			h[index] -= dt * ((uhmx[x_mid] - uhmx[x_prev]) / dx + (vhmy[y_mid] - vhmy[y_prev]) / dy);
+			uh[index] -= dt * (damp * uh[index] + 
+				(uhmx[x_mid] * uhmx[x_mid] / xhm[x_mid] + 0.5 * g * xhm[x_mid] * xhm[x_mid] - 
+				uhmx[x_prev] * uhmx[x_prev] / xhm[x_prev] - 0.5 * g * xhm[x_prev] * xhm[x_prev]) / dx + 
+				(uhmy[y_mid] * vhmy[y_mid] / yhm[y_mid] - uhmy[y_prev] * vhmy[y_prev] / yhm[y_prev]) / dy); // this line potentially buggy
+			vh[index] -= dt * (damp * vh[index] + 
+				(uhmx[x_mid] * vhmx[x_mid] / xhm[x_mid] - uhmx[x_prev] * vhmx[x_prev] / xhm[x_prev]) / dx + 
+				(vhmy[y_mid] * vhmy[y_mid] / yhm[y_mid] + 0.5 * g * yhm[y_mid] * yhm[y_mid] - 
+				vhmy[y_prev] * vhmy[y_prev] / yhm[y_prev] - 0.5 * g * yhm[y_prev] * yhm[y_prev]) / dy);
+			//printf("%f\n%f\n\n", uhmy[y_mid], uhmy[y_prev]);
+
 		}
 	}
-	
+	//printf("\n");
 	// boundary conditions
 	set_boundary();
 
@@ -284,60 +319,61 @@ void shallow2d::waveUpdate(float dt) {
 	update_normal();
 }
 
+// potentially problematic
 void shallow2d::set_boundary(){
 	switch (b_cond) {
 	case boundary_condition::periodic:
-		for (int i = 0; i < nx; i++) {
-			h[i] = h[(ny - 2) * nx + i];
-			h[(ny - 1) * nx + i] = h[i + nx];
-			uh[i] = uh[(ny - 2) * nx + i];
-			uh[(ny - 1) * nx + i] = uh[i + nx];
-			vh[i] = vh[(ny - 2) * nx + i];
-			vh[(ny - 1) * nx + i] = vh[i + nx];
+		for (int i = 0; i < ny; i++) {
+			h[i] = h[ny * (nx - 2) + i];
+			h[ny * (nx - 1) + i] = h[i + ny];
+			uh[i] = uh[ny * (nx - 2) + i];
+			uh[ny * (nx - 1) + i] = uh[i + ny];
+			vh[i] = vh[ny * (nx - 2) + i];
+			vh[ny * (nx - 1) + i] = vh[i + ny];
 		}
 		for (int i = 1; i < ny - 1; i++) {
-			h[i * nx] = h[i * nx + 1];
-			h[(i + 1) * nx - 1] = h[(i + 1) * nx - 2];
-			uh[i * nx] = uh[i * nx + 1];
-			uh[(i + 1) * nx - 1] = uh[(i + 1) * nx - 2];
-			vh[i * nx] = vh[i * nx + 1];
-			vh[(i + 1) * nx - 1] = vh[(i + 1) * nx - 2];
+			h[i * ny] = h[(i + 1) * ny - 2];
+			h[(i + 1) * ny - 1] = h[i * ny + 1];
+			uh[i * ny] = uh[(i + 1) * ny - 2];
+			uh[(i + 1) * ny - 1] = uh[i * ny + 1];
+			vh[i * ny] = vh[(i + 1) * ny - 2];
+			vh[(i + 1) * ny - 1] = vh[i * ny + 1];
 		}
 
 	case boundary_condition::reflective:
-		for (int i = 0; i < nx; i++) {
-			h[i] = h[i + nx];
-			h[(ny - 1) * nx + i] = h[(ny - 2) * nx + i];
-			uh[i] = uh[i + nx];
-			uh[(ny - 1) * nx + i] = uh[(ny - 2) * nx + i];
-			vh[i] = h[i + nx];
-			vh[(ny - 1) * nx + i] = vh[(ny - 2) * nx + i];
+		for (int i = 0; i < ny; i++) {
+			h[i] = h[i + ny];
+			h[ny * (nx - 1) + i] = h[ny * (nx - 2) + i];
+			uh[i] = uh[i + ny];
+			uh[ny * (nx - 1) + i] = -uh[ny * (nx - 2) + i];
+			vh[i] = vh[i + ny];
+			vh[ny * (nx - 1) + i] = -vh[ny * (nx - 2) + i];
 		}
 		for (int i = 1; i < ny - 1; i++) {
-			h[i * nx] = h[i * nx + 1];
-			h[(i + 1) * nx - 1] = h[(i + 1) * nx - 2];
-			uh[i * nx] = -uh[i * nx + 1];
-			uh[(i + 1) * nx - 1] = -uh[(i + 1) * nx - 2];
-			vh[i * nx] = -vh[i * nx + 1];
-			vh[(i + 1) * nx - 1] = -vh[(i + 1) * nx - 2];
+			h[i * ny] = h[i * ny + 1];
+			h[(i + 1) * ny - 1] = h[(i + 1) * ny - 2];
+			uh[i * ny] = uh[i * ny + 1];
+			uh[(i + 1) * ny - 1] = -uh[(i + 1) * ny - 2];
+			vh[i * ny] = vh[i * ny + 1];
+			vh[(i + 1) * ny - 1] = -vh[(i + 1) * ny - 2];
 		}
 		break;
 	default: // default is free
-		for (int i = 0; i < nx; i++) {
-			h[i] = h[i + nx];
-			h[(ny - 1) * nx + i] = h[(ny - 2) * nx + i];
-			uh[i] = uh[i + nx];
-			uh[(ny - 1) * nx + i] = uh[(ny - 2) * nx + i];
-			vh[i] = h[i + nx];
-			vh[(ny - 1) * nx + i] = vh[(ny - 2) * nx + i];
+		for (int i = 0; i < ny; i++) {
+			h[i] = h[i + ny];
+			h[ny * (nx - 1) + i] = h[ny * (nx - 2) + i];
+			uh[i] = uh[i + ny];
+			uh[ny * (nx - 1) + i] = uh[ny * (nx - 2) + i];
+			vh[i] = vh[i + ny];
+			vh[ny * (nx - 1) + i] = vh[ny * (nx - 2) + i];
 		}
 		for (int i = 1; i < ny - 1; i++) {
-			h[i * nx] = h[i * nx + 1];
-			h[(i + 1) * nx - 1] = h[(i + 1) * nx - 2];
-			uh[i * nx] = uh[i * nx + 1];
-			uh[(i + 1) * nx - 1] = uh[(i + 1) * nx - 2];
-			vh[i * nx] = vh[i * nx + 1];
-			vh[(i + 1) * nx - 1] = vh[(i + 1) * nx - 2];
+			h[i * ny] = h[i * ny + 1];
+			h[(i + 1) * ny - 1] = h[(i + 1) * ny - 2];
+			uh[i * ny] = uh[i * ny + 1];
+			uh[(i + 1) * ny - 1] = uh[(i + 1) * ny - 2];
+			vh[i * ny] = vh[i * ny + 1];
+			vh[(i + 1) * ny - 1] = vh[(i + 1) * ny - 2];
 		}
 	}
 }
@@ -353,20 +389,48 @@ void shallow2d::update_vertex() {
 			vertices[3 * (i * ny + j) + 1] = left + j * xstep;
 			vertices[3 * (i * ny + j) + 2] = height + h[i * ny + j];
 		}
-		/*
-		// near vertex
-		vertices[6 * i] = near;
-		vertices[6 * i + 1] = left + i * step;
-		vertices[6 * i + 2] = height + h[i];
-		// far vertex
-		vertices[6 * i + 3] = -near;
-		vertices[6 * i + 4] = left + i * step;
-		vertices[6 * i + 5] = height + h[i];
-		*/
 	}
 }
 
 void shallow2d::update_normal() {
+	// clear existing normals
+	#pragma omp parallel for
+	for (int i = 0; i < normals.size(); i++) normals[i] = 0.0f;
+	// compute new normals
+	for (int i = 0; i < nx - 1; i++) {
+		for (int j = 0; j < ny - 1; j++) {
+			// find indices
+			int ind0 = 3 * (i * ny + j);
+			int ind1 = 3 * (i * ny + j + 1);
+			int ind2 = 3 * ((i + 1) * ny + j + 1);
+			int ind3 = 3 * ((i + 1) * ny + j);
+			// look up vertices
+			glm::vec3 vert0(vertices[ind0], vertices[ind0 + 1], vertices[ind0 + 2]);
+			glm::vec3 vert1(vertices[ind1], vertices[ind1 + 1], vertices[ind1 + 2]);
+			glm::vec3 vert2(vertices[ind2], vertices[ind2 + 1], vertices[ind2 + 2]);
+			glm::vec3 vert3(vertices[ind3], vertices[ind3 + 1], vertices[ind3 + 2]);
+			// compute vectors
+			glm::vec3 v0 = glm::normalize(vert0 - vert3);
+			glm::vec3 v1 = glm::normalize(vert1 - vert3);
+			glm::vec3 v2 = glm::normalize(vert2 - vert3);
+			// compute normals
+			glm::vec3 n0 = glm::cross(v0, v1);
+			glm::vec3 n1 = glm::cross(v1, v2);
+			// assign normals
+			normals[ind0] += n0.x; normals[ind0 + 1] += n0.y; normals[ind0 + 2] += n0.z;
+			normals[ind1] += n0.x; normals[ind1 + 1] += n0.y; normals[ind1 + 2] += n0.z;
+			normals[ind3] += n0.x; normals[ind3 + 1] += n0.y; normals[ind3 + 2] += n0.z;
+			normals[ind1] += n1.x; normals[ind1 + 1] += n1.y; normals[ind1 + 2] += n1.z;
+			normals[ind2] += n1.x; normals[ind2 + 1] += n1.y; normals[ind2 + 2] += n1.z;
+			normals[ind3] += n1.x; normals[ind3 + 1] += n1.y; normals[ind3 + 2] += n1.z;
+		}
+	}
+	// normalize normals
+	for (int i = 0; i < nx * ny; i++) {
+		glm::vec3 tmp(normals[3 * i], normals[3 * i + 1], normals[3 * i + 2]);
+		tmp = glm::normalize(tmp);
+		normals[3 * i] = tmp.x; normals[3 * i + 1] = tmp.y; normals[3 * i + 2] = tmp.z;
+	}
 	return;
 }
 

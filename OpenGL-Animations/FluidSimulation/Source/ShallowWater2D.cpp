@@ -31,9 +31,8 @@ glm::vec3 cam_loc, look_at, up;
 //Index of where to model, view, and projection matricies are stored on the GPU
 GLint uniModel, uniView, uniProj, uniColor;
 
-// shallow water 1D
-//shallow1d water;
-shallow2d water(70, 70, 0.1f, 10.f, boundary_condition::free, 10.f, 10.f, 0.f, 50);
+// shallow water 2D
+shallow2d water(50, 50, 0.2f, 10.f, boundary_condition::free, 10.f, 10.f, 0.f, 50);
 
 GLuint shaderProgram;
 GLuint vbo[2];
@@ -178,6 +177,7 @@ void init() {
     screen_height = 600;
 
     cam_loc = glm::vec3(11.5f, 0.f, 8.f);
+    //cam_loc = glm::vec3(0.f, 0.1f, 15.f);
     look_at = glm::vec3(0.0f, 0.0f, 1.0f);
     up = glm::vec3(0.0f, 0.0f, 1.0f);
 
@@ -210,8 +210,8 @@ void draw() {
     model = glm::translate(model, glm::vec3(0.0f));
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    //glUniform3f(uniColor, 0.34f, 0.78f, 1.0f);
-    glUniform3f(uniColor, 0.0f, 0.0f, 1.0f);
+    //glUniform3f(uniColor, 0.0f, 0.0f, 1.0f);
+    glUniform3f(uniColor, 0.3f, 0.7f, 1.0f);
     glDrawElements(GL_TRIANGLES, water.indices.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
 }
 
@@ -228,7 +228,17 @@ void set_camera() {
 void perturbation(SDL_Event event) {
     if (event.type == SDL_KEYUP) {
         switch (event.key.keysym.sym) {
-        case SDLK_UP: water.set_uh(water.nx / 2, water.ny / 2, 3.0f); break;
+        case SDLK_UP: 
+            water.set_h(water.nx / 2, water.ny / 2, 2.0f); 
+            water.set_h(water.nx / 2 + 1, water.ny / 2, 2.0f);
+            water.set_h(water.nx / 2, water.ny / 2 + 1, 2.0f);
+            water.set_h(water.nx / 2 - 1, water.ny / 2, 2.0f);
+            water.set_h(water.nx / 2, water.ny / 2 - 1, 2.0f);
+            water.set_h(water.nx / 2 + 1, water.ny / 2 + 1, 2.0f);
+            water.set_h(water.nx / 2 - 1, water.ny / 2 - 1, 2.0f);
+            water.set_h(water.nx / 2 - 1, water.ny / 2 + 1, 2.0f);
+            water.set_h(water.nx / 2 + 1, water.ny / 2 - 1, 2.0f);
+            break;
         //case SDLK_LEFT: water.set_uh(water.n / 3, 3.0f); break;
         //case SDLK_RIGHT: water.set_uh(2 * water.n / 3, 3.0f); break;
         case SDLK_f: water.set_boundary(boundary_condition::free); break;
