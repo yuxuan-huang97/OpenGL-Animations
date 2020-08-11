@@ -65,7 +65,7 @@ public:
 	shallow2d(int x_divisions, int y_divisions, float width_of_cell, float gravity, boundary_condition boundary, \
 		float length, float width, float height, float scale);
 
-	void waveUpdate(float dt);
+	void waveUpdate(float dt, int substep);
 
 	void set_h(int x_index, int y_index, float value);
 	void set_uh(int x_index, int y_index, float value);
@@ -81,8 +81,10 @@ private:
 	vector<float> vh; // momentum vector in y direction
 	vector<float> xhm; // midpoint height vector in x direction
 	vector<float> yhm; // midpoint height vector in y direction
-	vector<float> uhm; // midpoint momentum vector in x direction
-	vector<float> vhm; // midpoint momentum vector in y direction
+	vector<float> uhmx; // midpoint u momentum vector in x direction
+	vector<float> uhmy; // midpoint u momentum vector in y direction
+	vector<float> vhmx; // midpoint v momentum vector in x direction
+	vector<float> vhmy; // midpoint v momentum vector in y direction
 
 	boundary_condition b_cond; // boundary condition
 

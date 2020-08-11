@@ -32,7 +32,7 @@ glm::vec3 cam_loc, look_at, up;
 GLint uniModel, uniView, uniProj, uniColor;
 
 // shallow water 2D
-shallow2d water(50, 50, 0.2f, 10.f, boundary_condition::free, 10.f, 10.f, 0.f, 50);
+shallow2d water(100, 100, 0.1f, 10.f, boundary_condition::free, 10.f, 10.f, 0.f, 50);
 
 GLuint shaderProgram;
 GLuint vbo[2];
@@ -144,7 +144,7 @@ int main(int argc, char* args[]) {
             perturbation(windowEvent);
             //move_camera(windowEvent, cam_loc, look_at, up, 0.1f, 0.3f);
         }
-
+        //bound_rotate(window, cam_loc, look_at, 0.01f);
         // Clear the screen to default color
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -184,7 +184,7 @@ void init() {
 }
 
 void update(float dt) {
-    water.waveUpdate(dt);
+    water.waveUpdate(dt, 8);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
     glBufferData(GL_ARRAY_BUFFER, water.vertices.size() * sizeof(float), &water.vertices[0], GL_STREAM_DRAW); //upload vertices to vbo
@@ -210,8 +210,8 @@ void draw() {
     model = glm::translate(model, glm::vec3(0.0f));
     model = glm::scale(model, glm::vec3(1.0f));
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-    //glUniform3f(uniColor, 0.0f, 0.0f, 1.0f);
-    glUniform3f(uniColor, 0.3f, 0.7f, 1.0f);
+    glUniform3f(uniColor, 0.0f, 0.0f, 1.0f);
+    //glUniform3f(uniColor, 0.3f, 0.7f, 1.0f);
     glDrawElements(GL_TRIANGLES, water.indices.size(), GL_UNSIGNED_INT, (void*)0); //(Primitives, count, type, offset)
 }
 
@@ -225,22 +225,32 @@ void set_camera() {
     glUniformMatrix4fv(uniView, 1, GL_FALSE, glm::value_ptr(view));
 }
 
+void set_perturbation(int x, int x_nominator, int x_denominator, int y, int y_nominator, int y_denominator, float h) {
+    /*for (int i = 0; i < water.nx; i++) {
+        water.set_h(i, y * y_nominator / y_denominator, h);
+    }
+    for (int i = 0; i < water.ny; i++) {
+        water.set_uh(x * x_nominator / x_denominator, i, h);
+    }*/
+    
+    water.set_h(x * x_nominator / x_denominator, y * y_nominator / y_denominator, h);
+    water.set_h(x * x_nominator / x_denominator + 1, y * y_nominator / y_denominator, h);
+    water.set_h(x * x_nominator / x_denominator, y * y_nominator / y_denominator + 1, h);
+    water.set_h(x * x_nominator / x_denominator - 1, y * y_nominator / y_denominator, h);
+    water.set_h(x * x_nominator / x_denominator, y * y_nominator / y_denominator - 1, h);
+    water.set_h(x * x_nominator / x_denominator + 1, y * y_nominator / y_denominator + 1, h);
+    water.set_h(x * x_nominator / x_denominator - 1, y * y_nominator / y_denominator - 1, h);
+    water.set_h(x * x_nominator / x_denominator - 1, y * y_nominator / y_denominator + 1, h);
+    water.set_h(x * x_nominator / x_denominator + 1, y * y_nominator / y_denominator - 1, h);
+    
+}
+
 void perturbation(SDL_Event event) {
     if (event.type == SDL_KEYUP) {
         switch (event.key.keysym.sym) {
-        case SDLK_UP: 
-            water.set_h(water.nx / 2, water.ny / 2, 2.0f); 
-            water.set_h(water.nx / 2 + 1, water.ny / 2, 2.0f);
-            water.set_h(water.nx / 2, water.ny / 2 + 1, 2.0f);
-            water.set_h(water.nx / 2 - 1, water.ny / 2, 2.0f);
-            water.set_h(water.nx / 2, water.ny / 2 - 1, 2.0f);
-            water.set_h(water.nx / 2 + 1, water.ny / 2 + 1, 2.0f);
-            water.set_h(water.nx / 2 - 1, water.ny / 2 - 1, 2.0f);
-            water.set_h(water.nx / 2 - 1, water.ny / 2 + 1, 2.0f);
-            water.set_h(water.nx / 2 + 1, water.ny / 2 - 1, 2.0f);
-            break;
-        //case SDLK_LEFT: water.set_uh(water.n / 3, 3.0f); break;
-        //case SDLK_RIGHT: water.set_uh(2 * water.n / 3, 3.0f); break;
+        case SDLK_UP: set_perturbation(water.nx, 1, 2, water.ny, 1, 2, 2.0f); break;
+        case SDLK_LEFT: set_perturbation(water.nx, 2, 3, water.ny, 1, 3, 2.0f); break;
+        case SDLK_RIGHT: set_perturbation(water.nx, 1, 3, water.ny, 2, 3, 2.0f); break;
         case SDLK_f: water.set_boundary(boundary_condition::free); break;
         case SDLK_p: water.set_boundary(boundary_condition::periodic); break;
         case SDLK_r: water.set_boundary(boundary_condition::reflective); break;
